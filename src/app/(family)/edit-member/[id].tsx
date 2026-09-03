@@ -22,7 +22,7 @@ import {
   getCoursesForLevel,
 } from '@/constants/education';
 import { OCCUPATIONS } from '@/constants/occupations';
-import { formatDate, formatAge, isValidDOB } from '@/lib/utils/date';
+import { formatDate, formatDateForDB, formatAge, isValidDOB } from '@/lib/utils/date';
 import { PhotoUploadField } from '@/components/ui/PhotoUploadField';
 import { imageService } from '@/lib/storage/imageService';
 import { Button } from '@/components/ui/Button';
@@ -218,7 +218,7 @@ export default function EditMemberScreen() {
         name,
         photo_url: finalPhotoUrl,
         gender,
-        dob: formatDate(dob.trim()),
+        dob: formatDateForDB(dob.trim()),
         relation,
         mobile: mobile.trim() || null,
         residence_type: residenceType,

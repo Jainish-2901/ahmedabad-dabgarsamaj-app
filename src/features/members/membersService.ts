@@ -442,10 +442,13 @@ export const membersService = {
         // Strip virtual fields that do not exist as top-level columns in Supabase family_members
         const { is_deceased: _id, deceased_date: _dd, ...cleanUpdates } = updates as any;
 
+        const formattedDob = cleanUpdates.dob ? formatDateForDB(cleanUpdates.dob) : undefined;
+
         const { error: updateError } = await supabase
           .from('family_members')
           .update({
             ...cleanUpdates,
+            ...(formattedDob ? { dob: formattedDob } : {}),
             education_status: educationUpdates?.education_status || cleanUpdates.education_status,
             occupation_type: occupationUpdates?.occupation_type || cleanUpdates.occupation_type,
             occupation_details: occDetails,
