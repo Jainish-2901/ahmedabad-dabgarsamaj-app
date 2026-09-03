@@ -1,0 +1,612 @@
+import { BottomTabBar } from '@/components/navigation/BottomTabBar';
+import { TopBar } from '@/components/navigation/TopBar';
+import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import { useTheme } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  Image,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+
+export default function AboutScreen() {
+  const theme = useTheme();
+  const router = useRouter();
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+
+  const handleCall = (phoneNumber: string) => {
+    Linking.openURL(`tel:${phoneNumber}`).catch(() => { });
+  };
+
+  const handleWhatsApp = (phoneNumber: string) => {
+    const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
+    const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(
+      'નમસ્તે જૈનિષભાઈ, અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા એપ બાબતે સંપર્ક કર્યો છે.'
+    )}`;
+    Linking.openURL(url).catch(() => { });
+  };
+
+  const handleEmail = (email: string) => {
+    Linking.openURL(`mailto:${email}?subject=${encodeURIComponent('અમદાવાદ ડબગર સમાજ એપ ફીડબેક / પૂછપરછ')}`).catch(() => { });
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <TopBar title="અમદાવાદ ડબગર સમાજ" showBack={true} onBack={() => router.back()} />
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Samaj Hero Banner */}
+        <Card style={styles.heroCard}>
+          <View style={styles.heroContent}>
+            <Image
+              source={require('@/../assets/images/logo.png')}
+              style={styles.heroLogo}
+              resizeMode="contain"
+            />
+            <Text style={[styles.heroTitle, { color: theme.text }]}>
+              અમદાવાદ ડબગર સમાજ
+            </Text>
+            <Text style={[styles.heroSubtitle, { color: theme.primary }]}>
+              ડિજિટલ પરિચય પુસ્તિકા અને વંશાવલી
+            </Text>
+            <View style={styles.badgeRow}>
+              <Badge label="એકતા • સંસ્કાર • પ્રગતિ" variant="primary" size="md" />
+              <Badge label="Digital Edition 2026" variant="success" size="md" />
+            </View>
+          </View>
+        </Card>
+
+        {/* Samaj Introduction & Vision */}
+        <Card style={styles.sectionCard}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.iconBox, { backgroundColor: theme.primaryLight }]}>
+              <Ionicons name="people" size={20} color={theme.primary} />
+            </View>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              સમાજ પરિચય અને ઉદ્દેશ
+            </Text>
+          </View>
+
+          <Text style={[styles.bodyText, { color: theme.textSecondary }]}>
+            શ્રી અમદાવાદ ડબગર સમાજ એ સંસ્કાર, પરંપરા, એકતા અને પારસ્પરિક સહયોગનું પવિત્ર પ્રતીક છે. આ ડિજિટલ પરિચય પુસ્તિકાનો મુખ્ય ઉદ્દેશ અમદાવાદ ડબગર સમાજના દરેક પરિવારને એક ડિજિટલ મંચ પર જોડવાનો, સંબંધોને વધુ મજબૂત બનાવવાનો અને આપણી નવી પેઢીને પોતાના મૂળ અને વંશાવલીથી પરિચિત કરાવવાનો છે.
+          </Text>
+
+          <View style={styles.bulletList}>
+            <View style={styles.bulletItem}>
+              <Ionicons name="checkmark-circle" size={16} color={theme.primary} />
+              <Text style={[styles.bulletText, { color: theme.text }]}>
+                તમામ પરિવારો અને સભ્યોની એકત્રિત ડિજિટલ માહિતી
+              </Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <Ionicons name="checkmark-circle" size={16} color={theme.primary} />
+              <Text style={[styles.bulletText, { color: theme.text }]}>
+                શિક્ષણ, વ્યવસાય અને કારકિર્દીમાં પરસ્પર માર્ગદર્શન
+              </Text>
+            </View>
+            <View style={styles.bulletItem}>
+              <Ionicons name="checkmark-circle" size={16} color={theme.primary} />
+              <Text style={[styles.bulletText, { color: theme.text }]}>
+                આવનારી પેઢીઓ માટે સાચવેલી પારિવારિક વંશાવલી (Family Tree)
+              </Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* Application Core Features */}
+        <Card style={styles.sectionCard}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="phone-portrait" size={20} color={theme.success} />
+            </View>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              એપ્લિકેશનની મુખ્ય સુવિધાઓ
+            </Text>
+          </View>
+
+          <View style={styles.featureGrid}>
+            <View style={[styles.featureItem, { backgroundColor: theme.backgroundElement }]}>
+              <Text style={styles.featureEmoji}>🌳</Text>
+              <Text style={[styles.featureTitle, { color: theme.text }]}>ઇન્ટરેક્ટિવ વંશાવલી</Text>
+              <Text style={[styles.featureDesc, { color: theme.textSecondary }]}>
+                પરિવારના દરેક સંબંધ અને પેઢીઓનું સચિત્ર ફેમિલી ટ્રી.
+              </Text>
+            </View>
+
+            <View style={[styles.featureItem, { backgroundColor: theme.backgroundElement }]}>
+              <Text style={styles.featureEmoji}>📖</Text>
+              <Text style={[styles.featureTitle, { color: theme.text }]}>સ્માર્ટ ડિરેક્ટરી</Text>
+              <Text style={[styles.featureDesc, { color: theme.textSecondary }]}>
+                નામ, વિસ્તાર, શિક્ષણ કે વ્યવસાય અનુસાર સ્માર્ટ સર્ચ.
+              </Text>
+            </View>
+
+            <View style={[styles.featureItem, { backgroundColor: theme.backgroundElement }]}>
+              <Text style={styles.featureEmoji}>📄</Text>
+              <Text style={[styles.featureTitle, { color: theme.text }]}>PDF & પ્રિન્ટ</Text>
+              <Text style={[styles.featureDesc, { color: theme.textSecondary }]}>
+                પરિવાર કે સમગ્ર પુસ્તિકાનું સિંગલ ક્લિક A4 PDF ડાઉનલોડ.
+              </Text>
+            </View>
+
+            <View style={[styles.featureItem, { backgroundColor: theme.backgroundElement }]}>
+              <Text style={styles.featureEmoji}>🕊️</Text>
+              <Text style={[styles.featureTitle, { color: theme.text }]}>સ્વર્ગસ્થ સ્મૃતિ</Text>
+              <Text style={[styles.featureDesc, { color: theme.textSecondary }]}>
+                દિવંગત પૂર્વજો અને સ્વજનોનું આદરપૂર્વક અમર રેકોર્ડ.
+              </Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* Developer & Contact Information Card */}
+        <Card style={styles.devCard}>
+          <View style={styles.devHeader}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setImageModalVisible(true)}
+              style={styles.devAvatarContainer}
+            >
+              <Image
+                source={require('@/../assets/images/developer.jpg')}
+                style={styles.devAvatar}
+                resizeMode="cover"
+              />
+              <View style={styles.avatarZoomBadge}>
+                <Ionicons name="expand" size={11} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.devDetails}>
+              <Text style={styles.devBadge}>✨ Designed & Crafted by</Text>
+              <Text style={[styles.devName, { color: theme.text }]}>
+                Jainish Dabgar
+              </Text>
+              <Text style={[styles.devRole, { color: theme.primary }]}>
+                Full-Stack Developer & UI/UX Designer
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+          <Text style={[styles.contactSectionTitle, { color: theme.text }]}>
+            Connect & Contact (સંપર્ક):
+          </Text>
+
+          <View style={styles.socialButtonsList}>
+            {/* Direct Call */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => handleCall('+919773272749')}
+              style={[styles.socialBtn, { backgroundColor: '#10B981' }]}
+            >
+              <Ionicons name="call" size={18} color="#FFFFFF" />
+              <Text style={styles.socialBtnText}>+91 97732 72749 (Direct Call)</Text>
+              <Ionicons name="call-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+
+            {/* Direct WhatsApp */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => handleWhatsApp('919773272749')}
+              style={[styles.socialBtn, { backgroundColor: '#25D366' }]}
+            >
+              <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+              <Text style={styles.socialBtnText}>WhatsApp (+91 97732 72749)</Text>
+              <Ionicons name="chatbubbles-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+
+            {/* Portfolio */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => Linking.openURL('https://jainishdabgar.vercel.app/')}
+              style={[styles.socialBtn, { backgroundColor: '#0284C7' }]}
+            >
+              <Ionicons name="globe-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.socialBtnText}>Portfolio / Website</Text>
+              <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+
+            {/* LinkedIn */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => Linking.openURL('https://www.linkedin.com/in/jainish-dabgar-87474a320/')}
+              style={[styles.socialBtn, { backgroundColor: '#0A66C2' }]}
+            >
+              <Ionicons name="logo-linkedin" size={18} color="#FFFFFF" />
+              <Text style={styles.socialBtnText}>LinkedIn Profile</Text>
+              <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+
+            {/* GitHub */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => Linking.openURL('https://github.com/Jainish-2901')}
+              style={[styles.socialBtn, { backgroundColor: '#24292F' }]}
+            >
+              <Ionicons name="logo-github" size={18} color="#FFFFFF" />
+              <Text style={styles.socialBtnText}>GitHub (Jainish-2901)</Text>
+              <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+
+            {/* Instagram */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => Linking.openURL('https://www.instagram.com/dabgar_jainish_2901/')}
+              style={[styles.socialBtn, { backgroundColor: '#E1306C' }]}
+            >
+              <Ionicons name="logo-instagram" size={18} color="#FFFFFF" />
+              <Text style={styles.socialBtnText}>Instagram (@dabgar_jainish_2901)</Text>
+              <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+
+            {/* Email */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => handleEmail('jainishdabgar2901@gmail.com')}
+              style={[styles.socialBtn, { backgroundColor: '#EA4335' }]}
+            >
+              <Ionicons name="mail" size={18} color="#FFFFFF" />
+              <Text style={styles.socialBtnText}>jainishdabgar2901@gmail.com</Text>
+              <Ionicons name="send-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.noteBox, { backgroundColor: theme.backgroundElement }]}>
+            <Text style={[styles.noteText, { color: theme.textSecondary }]}>
+              💡 એપ્લિકેશન ડેવલપમેન્ટ, ડિઝાઇન અથવા અન્ય ટેક્નિકલ પ્રોજેક્ટ્સ માટે આપ ઉપર આપેલા કોઈપણ સોશિયલ મીડિયા કે ઈમેલ મારફતે સીધો સંપર્ક કરી શકો છો.
+            </Text>
+          </View>
+        </Card>
+
+        {/* Footer & All Rights Reserved */}
+        <View style={styles.footerContainer}>
+          <Text style={[styles.versionText, { color: theme.textSecondary }]}>
+            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • Version 1.0.1
+          </Text>
+          <Text style={[styles.copyrightText, { color: theme.textSecondary }]}>
+            © 2026 શ્રી અમદાવાદ ડબગર સમાજ. All Rights Reserved.
+          </Text>
+          <Text style={[styles.copyrightGujarati, { color: theme.primary }]}>
+            સર્વ અધિકાર સુરક્ષિત • Made with ❤️ for the Community
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* Centered Image Lightbox Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setImageModalVisible(false)}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+          >
+            {/* Modal Header with Title & Close Button */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <Text style={[styles.modalTitleText, { color: theme.text }]}>Jainish Dabgar</Text>
+                <Text style={[styles.modalSubtitleText, { color: theme.primary }]}>
+                  Full-Stack Developer & UI/UX Designer
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setImageModalVisible(false)}
+                style={[styles.modalCloseBtn, { backgroundColor: theme.backgroundElement }]}
+              >
+                <Ionicons name="close" size={20} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Centered Image Frame */}
+            <View style={styles.modalImageWrapper}>
+              <Image
+                source={require('@/../assets/images/developer.jpg')}
+                style={styles.modalImage}
+                resizeMode="cover"
+              />
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <BottomTabBar activeTab="home" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  heroCard: {
+    padding: 24,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  heroContent: {
+    alignItems: 'center',
+  },
+  heroLogo: {
+    width: 90,
+    height: 90,
+    marginBottom: 12,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  sectionCard: {
+    padding: 16,
+    marginBottom: 16,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  bodyText: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  bulletList: {
+    gap: 8,
+  },
+  bulletItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bulletText: {
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  featureGrid: {
+    gap: 10,
+  },
+  featureItem: {
+    padding: 12,
+    borderRadius: 12,
+  },
+  featureEmoji: {
+    fontSize: 22,
+    marginBottom: 4,
+  },
+  featureTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  featureDesc: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  devCard: {
+    padding: 18,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#0284C7',
+  },
+  devHeader: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center',
+  },
+  devAvatarContainer: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#0284C7',
+    backgroundColor: '#F0F9FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  avatarZoomBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: 'rgba(2, 132, 199, 0.9)',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  devAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  devDetails: {
+    flex: 1,
+  },
+  devBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+    marginBottom: 2,
+  },
+  devName: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  devRole: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  devLocation: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 14,
+  },
+  contactSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  socialButtonsList: {
+    gap: 8,
+    marginBottom: 14,
+  },
+  socialBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 10,
+  },
+  socialBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  noteBox: {
+    padding: 10,
+    borderRadius: 8,
+  },
+  noteText: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  footerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 4,
+  },
+  versionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  copyrightText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  copyrightGujarati: {
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 16,
+    alignItems: 'center',
+    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.25)',
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 12,
+  },
+  modalHeaderLeft: {
+    flex: 1,
+  },
+  modalTitleText: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  modalSubtitleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+  },
+  modalImageWrapper: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
+  },
+});

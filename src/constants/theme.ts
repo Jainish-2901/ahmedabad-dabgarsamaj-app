@@ -5,26 +5,61 @@
 
 import '@/global.css';
 
-import { Platform } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    primary: '#1E6091',
+    primaryLight: '#E6F0F8',
+    primaryDark: '#133D5E',
+    accent: '#F39C12',
+    text: '#111827',
+    textSecondary: '#6B7280',
+    textMuted: '#9CA3AF',
+    background: '#F8FAFC',
+    card: '#FFFFFF',
+    border: '#E2E8F0',
+    backgroundElement: '#F1F5F9',
+    backgroundSelected: '#E2E8F0',
+    success: '#10B981',
+    successLight: '#ECFDF5',
+    error: '#EF4444',
+    errorLight: '#FEF2F2',
+    warning: '#F59E0B',
+    warningLight: '#FFFBEB',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    primary: '#38BDF8',
+    primaryLight: '#082F49',
+    primaryDark: '#0284C7',
+    accent: '#FBBF24',
+    text: '#F9FAFB',
+    textSecondary: '#9CA3AF',
+    textMuted: '#6B7280',
+    background: '#0F172A',
+    card: '#1E293B',
+    border: '#334155',
+    backgroundElement: '#1E293B',
+    backgroundSelected: '#334155',
+    success: '#34D399',
+    successLight: '#064E3B',
+    error: '#F87171',
+    errorLight: '#450A0A',
+    warning: '#FBBF24',
+    warningLight: '#451A03',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+export function getTheme(scheme?: string | null) {
+  return scheme === 'dark' ? Colors.dark : Colors.light;
+}
+
+export function useTheme() {
+  const scheme = useColorScheme();
+  return scheme === 'dark' ? Colors.dark : Colors.light;
+}
 
 export const Fonts = Platform.select({
   ios: {

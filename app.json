@@ -1,18 +1,20 @@
 {
   "expo": {
-    "name": "community-family-app",
-    "slug": "community-family-app",
-    "version": "1.0.0",
+    "name": "અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા",
+    "slug": "community-family",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "communityfamilyapp",
+    "scheme": "dabgarsamaj",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.dabgar.samajpustika",
+      "icon": "./assets/images/icon.png"
     },
     "android": {
+      "package": "com.dabgar.samajpustika",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -28,15 +30,21 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 180
         }
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1954d07-e261-4ce2-8c81-ee985728a215"
+      }
+    },
+    "owner": "jainishdabgar2901"
   }
 }
