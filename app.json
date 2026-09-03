@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા",
+    "name": "Dabgar Samaj",
     "slug": "community-family",
     "version": "1.0.1",
     "orientation": "portrait",
@@ -26,6 +26,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withAppName.js",
       "expo-router",
       [
         "expo-splash-screen",
