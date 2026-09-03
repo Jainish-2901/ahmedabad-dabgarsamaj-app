@@ -368,8 +368,9 @@ export const membersService = {
 
     const occDetails = {
       ...(updates.occupation_details || {}),
-      ...(isDeceased !== undefined ? { is_deceased: isDeceased } : {}),
-      ...(updates.deceased_date !== undefined ? { deceased_date: updates.deceased_date } : {}),
+      ...(occupationUpdates?.details || {}),
+      is_deceased: isDeceased,
+      deceased_date: updates.deceased_date !== undefined ? updates.deceased_date : null,
     };
 
     const idx = localAppStore.members.findIndex((m) => m.id === memberId);
@@ -438,15 +439,24 @@ export const membersService = {
 
     if (isSupabaseConfigured) {
       try {
-        await supabase
+        // Strip virtual fields that do not exist as top-level columns in Supabase family_members
+        const { is_deceased: _id, deceased_date: _dd, ...cleanUpdates } = updates as any;
+
+        const { error: updateError } = await supabase
           .from('family_members')
           .update({
-            ...updates,
-            education_status: educationUpdates?.education_status || updates.education_status,
-            occupation_type: occupationUpdates?.occupation_type || updates.occupation_type,
-            occupation_details: occupationUpdates?.details || updates.occupation_details,
+            ...cleanUpdates,
+            education_status: educationUpdates?.education_status || cleanUpdates.education_status,
+            occupation_type: occupationUpdates?.occupation_type || cleanUpdates.occupation_type,
+            occupation_details: occDetails,
+            updated_at: new Date().toISOString(),
           })
           .eq('id', memberId);
+
+        if (updateError) {
+          console.error('Supabase updateMember error:', updateError);
+          return { error: updateError.message };
+        }
 
         if (educationUpdates && (educationUpdates.education_level || educationUpdates.course_or_standard)) {
           const { data: existingEdu } = await supabase
