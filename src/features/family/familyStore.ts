@@ -15,9 +15,6 @@ export const DEFAULT_AREAS: Area[] = [
   { id: 'area-10', name: 'Ghatlodia', city: 'Ahmedabad', state: 'Gujarat', status: 'ACTIVE', created_at: '' },
   { id: 'area-11', name: 'Satellite', city: 'Ahmedabad', state: 'Gujarat', status: 'ACTIVE', created_at: '' },
   { id: 'area-12', name: 'Gandhinagar', city: 'Gandhinagar', state: 'Gujarat', status: 'ACTIVE', created_at: '' },
-  { id: 'area-13', name: 'Surat', city: 'Surat', state: 'Gujarat', status: 'ACTIVE', created_at: '' },
-  { id: 'area-14', name: 'Vadodara', city: 'Vadodara', state: 'Gujarat', status: 'ACTIVE', created_at: '' },
-  { id: 'area-15', name: 'Rajkot', city: 'Rajkot', state: 'Gujarat', status: 'ACTIVE', created_at: '' },
   { id: 'other', name: 'Other / અન્ય', city: 'Other', state: 'Gujarat', status: 'ACTIVE', created_at: '' },
 ];
 

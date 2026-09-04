@@ -1,0 +1,8 @@
+Place your compiled APK file here named:
+ahmedabad-dabgarsamaj.apk
+
+Once placed here, users will be able to download it directly from the website at:
+https://your-domain.com/ahmedabad-dabgarsamaj.apk
+
+Alternatively, you can upload the APK to Supabase Storage (in a public bucket) or GitHub Releases, and set:
+EXPO_PUBLIC_APK_URL="https://your-storage-url/ahmedabad-dabgarsamaj.apk" in your .env file.

@@ -64,6 +64,9 @@ export interface FamilyMember {
   occupation_type?: string | null;
   occupation_details?: Record<string, any> | null;
   status: RecordStatus;
+  blood_group?: string | null;
+  birth_place?: string | null;
+  can_edit_family?: boolean;
   is_deceased?: boolean;
   deceased_date?: string | null;
   created_at: string;

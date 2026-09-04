@@ -75,6 +75,13 @@ export function FamilyBookletDetailModal({
     }
   };
 
+  const handleOpenMember = (memberId: string) => {
+    onClose();
+    setTimeout(() => {
+      router.push(`/(family)/member/${memberId}` as any);
+    }, 120);
+  };
+
   const handleZoomIn = () => {
     setZoomScale((prev) => Math.min(1.8, prev + 0.15));
   };
@@ -178,6 +185,9 @@ export function FamilyBookletDetailModal({
                 <View style={styles.badgeRow}>
                   <Badge label="Family Head / વડા" variant="primary" size="sm" />
                   <Badge label={family.family_code} variant="success" size="sm" />
+                  {headMember?.blood_group ? (
+                    <Badge label={`🩸 ${headMember.blood_group}`} variant="neutral" size="sm" />
+                  ) : null}
                 </View>
 
                 {headMember?.mobile ? (
@@ -192,11 +202,30 @@ export function FamilyBookletDetailModal({
                     </Text>
                   </TouchableOpacity>
                 ) : null}
+
+                {headMember ? (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => handleOpenMember(headMember.id)}
+                    style={styles.heroProfileBtn}
+                  >
+                    <Text style={[styles.heroProfileBtnText, { color: theme.primary }]}>
+                      વડાની પ્રોફાઇલ જુઓ / View Profile →
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </View>
 
             {/* Residence details */}
             <View style={[styles.addressBox, { backgroundColor: theme.backgroundElement }]}>
+              {headMember?.birth_place ? (
+                <View style={[styles.addressLine, { marginBottom: 6 }]}>
+                  <Ionicons name="business-outline" size={15} color={theme.textSecondary} />
+                  <Text style={[styles.addressLabel, { color: theme.textSecondary }]}>જન્મ સ્થળ / Birth:</Text>
+                  <Text style={[styles.addressValue, { color: theme.text }]}>{headMember.birth_place}</Text>
+                </View>
+              ) : null}
               <View style={styles.addressLine}>
                 <Ionicons name="location" size={15} color={theme.primary} />
                 <Text style={[styles.addressLabel, { color: theme.textSecondary }]}>વિસ્તાર / Area:</Text>
@@ -258,158 +287,212 @@ export function FamilyBookletDetailModal({
               const expYears = occ?.experience_years || d.experience_years;
 
               return (
-                <Card key={m.id} style={styles.memberCard}>
-                  {/* Top Profile Line */}
-                  <View style={styles.memberCardHeader}>
-                    <Avatar
-                      name={m.name}
-                      photoUrl={m.photo_url}
-                      gender={m.gender}
-                      size={52}
-                      enablePreview={true}
-                      subtitle={m.display_relation || m.relation}
-                    />
-                    <View style={styles.memberCardDetails}>
-                      <View style={styles.memberNameLine}>
-                        <Text style={[styles.memberName, { color: theme.text }]}>
-                          {m.is_deceased ? `🕊️ સ્વ. ${m.name}` : m.name}
-                        </Text>
-                        <View style={{ flexDirection: 'row', gap: 4 }}>
-                          {m.is_deceased ? (
-                            <Badge label="🕊️ સ્વર્ગસ્થ" variant="neutral" size="sm" />
-                          ) : null}
-                          <Badge label={m.display_relation || m.relation} variant="neutral" size="sm" />
+                <TouchableOpacity
+                  key={m.id}
+                  activeOpacity={0.85}
+                  onPress={() => handleOpenMember(m.id)}
+                  style={[
+                    styles.memberCard,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.memberCardContent}>
+                    {/* Top Profile Line */}
+                    <View style={styles.memberCardHeader}>
+                      <Avatar
+                        name={m.name}
+                        photoUrl={m.photo_url}
+                        gender={m.gender}
+                        size={52}
+                        enablePreview={true}
+                        subtitle={m.display_relation || m.relation}
+                      />
+                      <View style={styles.memberCardDetails}>
+                        <View style={styles.memberNameLine}>
+                          <Text style={[styles.memberName, { color: theme.text }]}>
+                            {m.is_deceased ? `🕊️ સ્વ. ${m.name}` : m.name}
+                          </Text>
+                          <View style={{ flexDirection: 'row', gap: 4 }}>
+                            {m.is_deceased ? (
+                              <Badge label="🕊️ સ્વર્ગસ્થ" variant="neutral" size="sm" />
+                            ) : null}
+                            <Badge label={m.display_relation || m.relation} variant="neutral" size="sm" />
+                            {m.blood_group ? (
+                              <Badge label={`🩸 ${m.blood_group}`} variant="neutral" size="sm" />
+                            ) : null}
+                          </View>
                         </View>
+
+                        <Text style={[styles.memberAgeText, { color: theme.textSecondary }]}>
+                          {m.gender} • {m.is_deceased ? (m.deceased_date ? `સ્વર્ગવાસ: ${formatDate(m.deceased_date) || m.deceased_date}` : 'સ્વર્ગસ્થ') : formatAgeShort(m.dob, m.age)} • DOB: {formatDate(m.dob) || 'N/A'}
+                        </Text>
+
+                        {!m.is_deceased && m.mobile ? (
+                          <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleCall(m.mobile);
+                            }}
+                            style={styles.memberPhoneRow}
+                          >
+                            <Ionicons name="call" size={13} color={theme.primary} />
+                            <Text style={[styles.memberPhoneText, { color: theme.primary }]}>
+                              {m.mobile}
+                            </Text>
+                            <Text style={[styles.tapCallHint, { color: theme.textSecondary }]}>
+                              (Tap to Call)
+                            </Text>
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
-
-                      <Text style={[styles.memberAgeText, { color: theme.textSecondary }]}>
-                        {m.gender} • {m.is_deceased ? (m.deceased_date ? `સ્વર્ગવાસ: ${formatDate(m.deceased_date) || m.deceased_date}` : 'સ્વર્ગસ્થ') : formatAgeShort(m.dob, m.age)} • DOB: {formatDate(m.dob) || 'N/A'}
-                      </Text>
-
-                      {!m.is_deceased && m.mobile ? (
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => handleCall(m.mobile)}
-                          style={styles.memberPhoneRow}
-                        >
-                          <Ionicons name="call" size={13} color={theme.primary} />
-                          <Text style={[styles.memberPhoneText, { color: theme.primary }]}>
-                            {m.mobile}
-                          </Text>
-                          <Text style={[styles.tapCallHint, { color: theme.textSecondary }]}>
-                            (Tap to Call)
-                          </Text>
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                  </View>
-
-                  {/* Complete Education Section */}
-                  <View style={[styles.memberDetailsSection, { borderTopColor: theme.border }]}>
-                    <View style={styles.detailRow}>
-                      <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                        શિક્ષણ / Education:
-                      </Text>
-                      <Text style={[styles.detailValue, { color: theme.text }]}>
-                        🎓 {m.education_status || 'N/A'}
-                      </Text>
+                      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
                     </View>
 
-                    {edu?.institution ? (
-                      <View style={styles.detailRow}>
-                        <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                          શાળા/કોલેજ / Institution:
-                        </Text>
-                        <Text style={[styles.detailValue, { color: theme.text }]}>
-                          🏫 {edu.institution}
-                        </Text>
+                    {/* Personal Details (Blood Group & Birth Place) */}
+                    {(m.blood_group || m.birth_place) ? (
+                      <View style={[styles.memberDetailsSection, { borderTopColor: theme.border }]}>
+                        {m.blood_group ? (
+                          <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                              બ્લડ ગ્રૂપ / Blood Group:
+                            </Text>
+                            <Text style={[styles.detailValue, { color: '#DC2626', fontWeight: '800' }]}>
+                              🩸 {m.blood_group}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {m.birth_place ? (
+                          <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                              જન્મ સ્થળ / Birth Place:
+                            </Text>
+                            <Text style={[styles.detailValue, { color: theme.text }]}>
+                              🏛️ {m.birth_place}
+                            </Text>
+                          </View>
+                        ) : null}
                       </View>
                     ) : null}
 
-                    {edu?.passing_year ? (
+                    {/* Complete Education Section */}
+                    <View style={[styles.memberDetailsSection, { borderTopColor: theme.border }]}>
                       <View style={styles.detailRow}>
                         <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                          પાસિંગ વર્ષ / Year:
+                          શિક્ષણ / Education:
                         </Text>
                         <Text style={[styles.detailValue, { color: theme.text }]}>
-                          📅 {edu.passing_year}
+                          🎓 {m.education_status || 'N/A'}
                         </Text>
+                      </View>
+
+                      {edu?.institution ? (
+                        <View style={styles.detailRow}>
+                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                            શાળા/કોલેજ / Institution:
+                          </Text>
+                          <Text style={[styles.detailValue, { color: theme.text }]}>
+                            🏫 {edu.institution}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {edu?.passing_year ? (
+                        <View style={styles.detailRow}>
+                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                            પાસિંગ વર્ષ / Year:
+                          </Text>
+                          <Text style={[styles.detailValue, { color: theme.text }]}>
+                            📅 {edu.passing_year}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {m.occupation_type ? (
+                      <View style={[styles.memberDetailsSection, { borderTopColor: theme.border }]}>
+                        <View style={styles.detailRow}>
+                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                            વ્યવસાય / Occupation:
+                          </Text>
+                          <Text style={[styles.detailValue, { color: theme.text }]}>
+                            💼 {occDisplay}
+                          </Text>
+                        </View>
+
+                        {orgName ? (
+                          <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                              કંપની / પેઢી / સંસ્થા:
+                            </Text>
+                            <Text style={[styles.detailValue, { color: theme.text }]}>
+                              🏢 {orgName}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {roleName ? (
+                          <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                              હોદ્દો / Designation:
+                            </Text>
+                            <Text style={[styles.detailValue, { color: theme.text }]}>
+                              👔 {roleName}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {workCity ? (
+                          <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                              કામનું સ્થળ / Location:
+                            </Text>
+                            <Text style={[styles.detailValue, { color: theme.text }]}>
+                              📍 {workCity}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {expYears ? (
+                          <View style={styles.detailRow}>
+                            <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                              અનુભવ / Experience:
+                            </Text>
+                            <Text style={[styles.detailValue, { color: theme.text }]}>
+                              ⏳ {expYears} Years
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    ) : null}
+
+                    {/* Separate Residence Address if applicable */}
+                    {m.residence_type === 'SEPARATE' && m.separate_address ? (
+                      <View style={[styles.memberDetailsSection, { borderTopColor: theme.border }]}>
+                        <View style={styles.detailRow}>
+                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                            અલગ સરનામું / Residence:
+                          </Text>
+                          <Text style={[styles.detailValue, { color: theme.text }]}>
+                            🏠 {m.separate_address}, {m.separate_city || ''} - {m.separate_pincode || ''}
+                          </Text>
+                        </View>
                       </View>
                     ) : null}
                   </View>
 
-                  {/* Complete Occupation Section */}
-                  {m.occupation_type ? (
-                    <View style={[styles.memberDetailsSection, { borderTopColor: theme.border }]}>
-                      <View style={styles.detailRow}>
-                        <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                          વ્યવસાય / Occupation:
-                        </Text>
-                        <Text style={[styles.detailValue, { color: theme.text }]}>
-                          💼 {occDisplay}
-                        </Text>
-                      </View>
-
-                      {orgName ? (
-                        <View style={styles.detailRow}>
-                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                            કંપની / પેઢી / સંસ્થા:
-                          </Text>
-                          <Text style={[styles.detailValue, { color: theme.text }]}>
-                            🏢 {orgName}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      {roleName ? (
-                        <View style={styles.detailRow}>
-                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                            હોદ્દો / Designation:
-                          </Text>
-                          <Text style={[styles.detailValue, { color: theme.text }]}>
-                            👔 {roleName}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      {workCity ? (
-                        <View style={styles.detailRow}>
-                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                            કામનું સ્થળ / Location:
-                          </Text>
-                          <Text style={[styles.detailValue, { color: theme.text }]}>
-                            📍 {workCity}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      {expYears ? (
-                        <View style={styles.detailRow}>
-                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                            અનુભવ / Experience:
-                          </Text>
-                          <Text style={[styles.detailValue, { color: theme.text }]}>
-                            ⏳ {expYears} Years
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  ) : null}
-
-                  {/* Separate Residence Address if applicable */}
-                  {m.residence_type === 'SEPARATE' && m.separate_address ? (
-                    <View style={[styles.memberDetailsSection, { borderTopColor: theme.border }]}>
-                      <View style={styles.detailRow}>
-                        <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                          અલગ સરનામું / Residence:
-                        </Text>
-                        <Text style={[styles.detailValue, { color: theme.text }]}>
-                          🏠 {m.separate_address}, {m.separate_city || ''} - {m.separate_pincode || ''}
-                        </Text>
-                      </View>
-                    </View>
-                  ) : null}
-                </Card>
+                  {/* Click to open member's full profile footer */}
+                  <View style={[styles.memberCardActionFooter, { borderTopColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                    <Text style={[styles.memberCardActionText, { color: theme.primary }]}>
+                      સંપૂર્ણ પ્રોફાઇલ જુઓ / View Member Profile
+                    </Text>
+                    <Ionicons name="chevron-forward" size={15} color={theme.primary} />
+                  </View>
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -607,9 +690,35 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 10,
   },
+  heroProfileBtn: {
+    marginTop: 4,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  heroProfileBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   memberCard: {
+    marginBottom: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  memberCardContent: {
     padding: 14,
-    marginBottom: 12,
+  },
+  memberCardActionFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderTopWidth: 1,
+  },
+  memberCardActionText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   memberCardHeader: {
     flexDirection: 'row',

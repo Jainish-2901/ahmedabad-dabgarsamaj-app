@@ -94,6 +94,9 @@ CREATE TABLE IF NOT EXISTS public.family_members (
     education_status TEXT,
     occupation_type TEXT,
     occupation_details JSONB DEFAULT '{}'::jsonb,
+    blood_group TEXT,
+    birth_place TEXT,
+    can_edit_family BOOLEAN NOT NULL DEFAULT false,
     status record_status NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -418,8 +421,5 @@ INSERT INTO public.areas (name, city, state) VALUES
 ('Gota', 'Ahmedabad', 'Gujarat'),
 ('Ranip', 'Ahmedabad', 'Gujarat'),
 ('Sabarmati', 'Ahmedabad', 'Gujarat'),
-('Gandhinagar', 'Gandhinagar', 'Gujarat'),
-('Surat', 'Surat', 'Gujarat'),
-('Vadodara', 'Vadodara', 'Gujarat'),
-('Rajkot', 'Rajkot', 'Gujarat')
+('Gandhinagar', 'Gandhinagar', 'Gujarat')
 ON CONFLICT DO NOTHING;

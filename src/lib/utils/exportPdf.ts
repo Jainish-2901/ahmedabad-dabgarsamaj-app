@@ -1,6 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Alert, Platform } from 'react-native';
 import { Family, FamilyMember } from '@/types/database';
 import { formatAge, formatAgeShort, formatDate } from '@/lib/utils/date';
@@ -43,6 +43,8 @@ export function generateSingleFamilyHtml(family: Family | ExportDirectoryFamilyI
           <td style="padding: 10px; border: 1px solid #E2E8F0;">
             <strong style="color: ${isDeceased ? '#475569' : '#0F172A'}; font-size: 14px;">${nameDisplay}</strong>
             ${isDeceased ? '<br/><span style="display:inline-block; background:#E2E8F0; color:#475569; padding:2px 6px; border-radius:4px; font-size:11px; margin-top:2px;">🕊️ સ્વર્ગસ્થ</span>' : ''}
+            ${m.blood_group ? `<br/><span style="display:inline-block; color:#DC2626; font-size:11px; font-weight:bold;">🩸 ${m.blood_group}</span>` : ''}
+            ${m.birth_place ? `<br/><span style="display:inline-block; color:#64748B; font-size:11px;">📍 ${m.birth_place}</span>` : ''}
           </td>
           <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: center;">${m.display_relation || m.relation}</td>
           <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: center;">${m.gender || '-'}</td>
@@ -215,6 +217,8 @@ export function generateCommunityBookletHtml(families: ExportDirectoryFamilyItem
               <td style="padding: 6px 8px; border: 1px solid #CBD5E1; text-align: center;">${mIdx + 1}</td>
               <td style="padding: 6px 8px; border: 1px solid #CBD5E1;">
                 <strong>${nameDisplay}</strong>
+                ${m.blood_group ? `<br/><span style="color:#DC2626; font-size:10px; font-weight:bold;">🩸 ${m.blood_group}</span>` : ''}
+                ${m.birth_place ? `<br/><span style="color:#64748B; font-size:10px;">📍 ${m.birth_place}</span>` : ''}
               </td>
               <td style="padding: 6px 8px; border: 1px solid #CBD5E1; text-align: center;">${m.display_relation || m.relation}</td>
               <td style="padding: 6px 8px; border: 1px solid #CBD5E1; text-align: center;">${m.gender || '-'}</td>
@@ -310,48 +314,80 @@ export function generateCommunityBookletHtml(families: ExportDirectoryFamilyItem
 }
 
 /**
+ * On Web, expo-print's printAsync ignores the HTML and prints the app's current DOM.
+ * This helper renders the actual generated booklet HTML into an isolated iframe
+ * so the browser's print dialog prints/saves the actual booklet as PDF.
+ */
+function printHtmlOnWeb(html: string): void {
+  if (typeof document === 'undefined') return;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (doc) {
+    doc.open();
+    doc.write(html);
+    doc.close();
+    iframe.contentWindow?.focus();
+    setTimeout(() => {
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        try {
+          document.body.removeChild(iframe);
+        } catch {}
+      }, 1500);
+    }, 400);
+  }
+}
+
+/**
  * Export and Share single family booklet as PDF
  */
 export async function exportFamilyAsPdf(family: Family | ExportDirectoryFamilyItem, members: FamilyMember[]): Promise<void> {
   try {
     const html = generateSingleFamilyHtml(family, members);
     if (Platform.OS === 'web') {
-      await Print.printAsync({ html });
+      printHtmlOnWeb(html);
       return;
     }
 
-    const { uri } = await Print.printToFileAsync({ html });
-    if (uri) {
-      let shareUri = uri;
-      try {
-        const cleanName = `family_${(family.family_code || 'booklet').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
-        const baseDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || '';
-        if (baseDir) {
-          const destPath = `${baseDir}${cleanName}`;
-          await (FileSystem as any).copyAsync({ from: uri, to: destPath });
-          shareUri = destPath;
-        }
-      } catch (copyErr) {
-        console.warn('PDF copy warn:', copyErr);
-      }
+    const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
+    let shareUri = uri;
 
-      const isSharingAvailable = await Sharing.isAvailableAsync();
-      if (isSharingAvailable) {
-        try {
-          await Sharing.shareAsync(shareUri, {
-            mimeType: 'application/pdf',
-            dialogTitle: `${family.family_code} - Family Booklet PDF`,
-            UTI: 'com.adobe.pdf',
+    if (FileSystem.documentDirectory) {
+      const cleanCode = (family.family_code || 'family').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const targetUri = `${FileSystem.documentDirectory}family_${cleanCode}.pdf`;
+      try {
+        if (base64) {
+          await FileSystem.writeAsStringAsync(targetUri, base64, {
+            encoding: FileSystem.EncodingType.Base64,
           });
-          return;
-        } catch (shareErr) {
-          console.warn('Sharing rejected, falling back to print dialog:', shareErr);
-          await Print.printAsync({ html });
-          return;
+          shareUri = targetUri;
+        } else {
+          await FileSystem.copyAsync({ from: uri, to: targetUri });
+          shareUri = targetUri;
         }
-      } else {
-        await Print.printAsync({ html });
+      } catch (fsErr) {
+        console.warn('FileSystem prepare PDF error:', fsErr);
       }
+    }
+
+    const isSharingAvailable = await Sharing.isAvailableAsync();
+    if (isSharingAvailable) {
+      await Sharing.shareAsync(shareUri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `${family.family_code || 'Family'} - Family Booklet PDF`,
+        UTI: '.pdf',
+      });
+    } else {
+      Alert.alert('PDF Exported', `PDF file generated successfully at:\n${shareUri}`);
     }
   } catch (err: any) {
     console.error('Export family PDF error:', err);
@@ -366,42 +402,39 @@ export async function exportCommunityDirectoryAsPdf(families: ExportDirectoryFam
   try {
     const html = generateCommunityBookletHtml(families);
     if (Platform.OS === 'web') {
-      await Print.printAsync({ html });
+      printHtmlOnWeb(html);
       return;
     }
 
-    const { uri } = await Print.printToFileAsync({ html });
-    if (uri) {
-      let shareUri = uri;
-      try {
-        const cleanName = `dabgar_samaj_parichay_pustika_${Date.now()}.pdf`;
-        const baseDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || '';
-        if (baseDir) {
-          const destPath = `${baseDir}${cleanName}`;
-          await (FileSystem as any).copyAsync({ from: uri, to: destPath });
-          shareUri = destPath;
-        }
-      } catch (copyErr) {
-        console.warn('PDF copy warn:', copyErr);
-      }
+    const { uri, base64 } = await Print.printToFileAsync({ html, base64: true });
+    let shareUri = uri;
 
-      const isSharingAvailable = await Sharing.isAvailableAsync();
-      if (isSharingAvailable) {
-        try {
-          await Sharing.shareAsync(shareUri, {
-            mimeType: 'application/pdf',
-            dialogTitle: 'અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા PDF',
-            UTI: 'com.adobe.pdf',
+    if (FileSystem.documentDirectory) {
+      const targetUri = `${FileSystem.documentDirectory}dabgar_samaj_parichay_pustika_${Date.now()}.pdf`;
+      try {
+        if (base64) {
+          await FileSystem.writeAsStringAsync(targetUri, base64, {
+            encoding: FileSystem.EncodingType.Base64,
           });
-          return;
-        } catch (shareErr) {
-          console.warn('Sharing rejected, falling back to print dialog:', shareErr);
-          await Print.printAsync({ html });
-          return;
+          shareUri = targetUri;
+        } else {
+          await FileSystem.copyAsync({ from: uri, to: targetUri });
+          shareUri = targetUri;
         }
-      } else {
-        await Print.printAsync({ html });
+      } catch (fsErr) {
+        console.warn('FileSystem prepare Directory PDF error:', fsErr);
       }
+    }
+
+    const isSharingAvailable = await Sharing.isAvailableAsync();
+    if (isSharingAvailable) {
+      await Sharing.shareAsync(shareUri, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા PDF',
+        UTI: '.pdf',
+      });
+    } else {
+      Alert.alert('Directory PDF Exported', `PDF file generated successfully at:\n${shareUri}`);
     }
   } catch (err: any) {
     console.error('Export directory PDF error:', err);
@@ -415,6 +448,10 @@ export async function exportCommunityDirectoryAsPdf(families: ExportDirectoryFam
 export async function printFamilyDirectly(family: Family | ExportDirectoryFamilyItem, members: FamilyMember[]): Promise<void> {
   try {
     const html = generateSingleFamilyHtml(family, members);
+    if (Platform.OS === 'web') {
+      printHtmlOnWeb(html);
+      return;
+    }
     await Print.printAsync({ html });
   } catch (err: any) {
     console.error('Print family error:', err);
@@ -428,6 +465,10 @@ export async function printFamilyDirectly(family: Family | ExportDirectoryFamily
 export async function printCommunityDirectoryDirectly(families: ExportDirectoryFamilyItem[]): Promise<void> {
   try {
     const html = generateCommunityBookletHtml(families);
+    if (Platform.OS === 'web') {
+      printHtmlOnWeb(html);
+      return;
+    }
     await Print.printAsync({ html });
   } catch (err: any) {
     console.error('Print directory error:', err);

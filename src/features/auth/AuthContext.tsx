@@ -138,14 +138,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         // 2. Check Supabase online session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
+        const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+        if (session && session.user) {
           setSession(session);
           setUser(session.user);
           await fetchProfile(session.user.id);
+        } else if (stored.user) {
+          // If offline or network slow, retain the valid stored persistent user
+          setUser(stored.user);
+          setProfile(stored.profile);
         }
       } catch (err) {
         console.warn('Error checking supabase session on boot:', err);
+        // Retain local persistent user even if network request fails
+        if (stored.user) {
+          setUser(stored.user);
+          setProfile(stored.profile);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -275,7 +284,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.user) {
         setUser(data.user);
         setSession(data.session);
-        await savePersistentAuth(data.user, profile);
         await fetchProfile(data.user.id);
       }
       return {};

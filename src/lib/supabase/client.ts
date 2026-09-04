@@ -11,42 +11,102 @@ export const supabaseAnonKey =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJseWp6Z3VycmpobmhlY3p3bXZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNjMyNjUsImV4cCI6MjEwMzkzOTI2NX0.DkrjV51qGd6JnvNXIcRT0rTO8Xu639_5aQG_zz7jiJU';
 
 // Custom storage adapter ensuring persistent session storage across app restarts on Native & Web
+// Expo SecureStore on Android has a strict 2048-byte limit per key.
+// Supabase JWT + refresh tokens often exceed 2048 bytes! We split large payloads across chunks.
+const CHUNK_SIZE = 1800;
+
 const ExpoSecureStoreAdapter = {
-  getItem: (key: string): Promise<string | null> => {
-    if (Platform.OS === 'web' || typeof window !== 'undefined') {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        return Promise.resolve(window.localStorage.getItem(key));
+  getItem: async (key: string): Promise<string | null> => {
+    try {
+      if (Platform.OS === 'web' || typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          return window.localStorage.getItem(key);
+        }
+        return null;
       }
-      return Promise.resolve(null);
+
+      if (!key || typeof key !== 'string') return null;
+      const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+
+      // Check if item was chunked
+      const chunkCountStr = await SecureStore.getItemAsync(`${safeKey}_chunks`);
+      if (chunkCountStr) {
+        const count = parseInt(chunkCountStr, 10);
+        let fullStr = '';
+        for (let i = 0; i < count; i++) {
+          const chunk = await SecureStore.getItemAsync(`${safeKey}_${i}`);
+          if (chunk !== null) {
+            fullStr += chunk;
+          }
+        }
+        return fullStr || null;
+      }
+
+      // Single item read
+      return await SecureStore.getItemAsync(safeKey);
+    } catch (err) {
+      console.warn('ExpoSecureStoreAdapter.getItem error:', err);
+      return null;
     }
-    if (!key || typeof key !== 'string') return Promise.resolve(null);
-    const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    if (!safeKey) return Promise.resolve(null);
-    return SecureStore.getItemAsync(safeKey);
   },
-  setItem: (key: string, value: string): Promise<void> => {
-    if (Platform.OS === 'web' || typeof window !== 'undefined') {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(key, value);
+
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
+      if (Platform.OS === 'web' || typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(key, value);
+        }
+        return;
       }
-      return Promise.resolve();
+
+      if (!key || typeof key !== 'string') return;
+      const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+
+      // If value is small, write directly
+      if (value.length < CHUNK_SIZE) {
+        // Clean any old chunks if existed
+        await SecureStore.deleteItemAsync(`${safeKey}_chunks`).catch(() => {});
+        await SecureStore.setItemAsync(safeKey, value);
+        return;
+      }
+
+      // Chunk large values (e.g. Supabase JWT sessions)
+      const count = Math.ceil(value.length / CHUNK_SIZE);
+      await SecureStore.setItemAsync(`${safeKey}_chunks`, count.toString());
+      for (let i = 0; i < count; i++) {
+        const chunk = value.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        await SecureStore.setItemAsync(`${safeKey}_${i}`, chunk);
+      }
+    } catch (err) {
+      console.warn('ExpoSecureStoreAdapter.setItem error:', err);
     }
-    if (!key || typeof key !== 'string') return Promise.resolve();
-    const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    if (!safeKey) return Promise.resolve();
-    return SecureStore.setItemAsync(safeKey, value);
   },
-  removeItem: (key: string): Promise<void> => {
-    if (Platform.OS === 'web' || typeof window !== 'undefined') {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.removeItem(key);
+
+  removeItem: async (key: string): Promise<void> => {
+    try {
+      if (Platform.OS === 'web' || typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(key);
+        }
+        return;
       }
-      return Promise.resolve();
+
+      if (!key || typeof key !== 'string') return;
+      const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+
+      const chunkCountStr = await SecureStore.getItemAsync(`${safeKey}_chunks`).catch(() => null);
+      if (chunkCountStr) {
+        const count = parseInt(chunkCountStr, 10);
+        for (let i = 0; i < count; i++) {
+          await SecureStore.deleteItemAsync(`${safeKey}_${i}`).catch(() => {});
+        }
+        await SecureStore.deleteItemAsync(`${safeKey}_chunks`).catch(() => {});
+      }
+
+      await SecureStore.deleteItemAsync(safeKey).catch(() => {});
+    } catch (err) {
+      console.warn('ExpoSecureStoreAdapter.removeItem error:', err);
     }
-    if (!key || typeof key !== 'string') return Promise.resolve();
-    const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    if (!safeKey) return Promise.resolve();
-    return SecureStore.deleteItemAsync(safeKey);
   },
 };
 

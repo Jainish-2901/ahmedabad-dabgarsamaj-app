@@ -56,6 +56,8 @@ export default function EditMemberScreen() {
   const [deceasedDate, setDeceasedDate] = useState<string>('');
   const [dob, setDob] = useState('');
   const [mobile, setMobile] = useState('');
+  const [bloodGroup, setBloodGroup] = useState<string>('');
+  const [birthPlace, setBirthPlace] = useState<string>('');
   const [relation, setRelation] = useState('');
   const [relSearch, setRelSearch] = useState('');
   const [connectedMemberId, setConnectedMemberId] = useState<string>('');
@@ -135,6 +137,8 @@ export default function EditMemberScreen() {
         setDeceasedDate(m.deceased_date || '');
         setDob(formatDate(m.dob));
         setMobile(m.mobile || '');
+        setBloodGroup(m.blood_group || (m.occupation_details as any)?.blood_group || '');
+        setBirthPlace(m.birth_place || (m.occupation_details as any)?.birth_place || '');
         setRelation(m.relation);
         setResidenceType(m.residence_type);
         setSeparateAddress(m.separate_address || '');
@@ -221,6 +225,8 @@ export default function EditMemberScreen() {
         dob: formatDateForDB(dob.trim()),
         relation,
         mobile: mobile.trim() || null,
+        blood_group: bloodGroup.trim() || null,
+        birth_place: birthPlace.trim() || null,
         residence_type: residenceType,
         separate_address: residenceType === 'SEPARATE' && separateAreaId === 'other' && customSeparateArea.trim()
           ? `${separateAddress.trim()} (${customSeparateArea.trim()})`
@@ -470,6 +476,45 @@ export default function EditMemberScreen() {
               }
             />
             <Input label="Mobile Number / મોબાઈલ નંબર" value={mobile} onChangeText={setMobile} keyboardType="phone-pad" />
+
+            {/* Blood Group Picker */}
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>Blood Group / બ્લડ ગ્રૂપ</Text>
+              <View style={styles.bloodGrid}>
+                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                  <TouchableOpacity
+                    key={bg}
+                    activeOpacity={0.7}
+                    onPress={() => setBloodGroup(bloodGroup === bg ? '' : bg)}
+                    style={[
+                      styles.bloodChip,
+                      {
+                        backgroundColor: bloodGroup === bg ? '#DC2626' : theme.backgroundElement,
+                        borderColor: bloodGroup === bg ? '#DC2626' : theme.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.bloodChipText,
+                        { color: bloodGroup === bg ? '#FFFFFF' : theme.text },
+                      ]}
+                    >
+                      {bg}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Birth Place */}
+            <Input
+              label="Birth Place / જન્મ સ્થળ (ગામ / શહેર)"
+              placeholder="e.g. અમદાવાદ, પાટણ, વિસનગર, મહેસાણા..."
+              value={birthPlace}
+              onChangeText={setBirthPlace}
+              helperText="સભ્યનું મૂળ ગામ અથવા જન્મ સ્થળ દાખલ કરો"
+            />
 
             {/* Searchable Relationship Picker */}
             <View style={styles.fieldGroup}>
@@ -948,5 +993,24 @@ const styles = StyleSheet.create({
   },
   rowTwo: {
     flexDirection: 'row',
+  },
+  bloodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  bloodChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bloodChipText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

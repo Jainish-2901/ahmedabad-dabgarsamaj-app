@@ -11,17 +11,18 @@ import { useTheme } from '@/constants/theme';
 import { CommunityFamilyBookletItem } from '@/features/directory/directoryService';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
-import { formatAgeShort } from '@/lib/utils/date';
-import { getOccupationDisplay } from '@/constants/occupations';
 import { exportFamilyAsPdf } from '@/lib/utils/exportPdf';
 import { Ionicons } from '@expo/vector-icons';
+import { matchesMemberQuery, getMemberMatchHighlight } from '@/features/directory/directoryService';
+import { router } from 'expo-router';
 
 export interface BookletCardProps {
   item: CommunityFamilyBookletItem;
+  searchQuery?: string;
   onPressDetails?: () => void;
 }
 
-export function BookletCard({ item, onPressDetails }: BookletCardProps) {
+export function BookletCard({ item, searchQuery = '', onPressDetails }: BookletCardProps) {
   const theme = useTheme();
   const { family, headMember, members } = item;
 
@@ -35,8 +36,37 @@ export function BookletCard({ item, onPressDetails }: BookletCardProps) {
 
   const areaText = family.area?.name || family.city || 'Gujarat';
 
+  // Check matched members if searchQuery is present
+  const trimmedQuery = searchQuery.trim();
+  const hasSearch = trimmedQuery.length > 0;
+  
+  const isHeadMatched = headMember ? matchesMemberQuery(headMember, trimmedQuery) : false;
+  const headMatchBadge = isHeadMatched && headMember ? getMemberMatchHighlight(headMember, trimmedQuery) : null;
+
+  // Filter other non-head members that matched
+  const matchedNonHeadMembers = hasSearch
+    ? members.filter((m) => m.id !== headMember?.id && matchesMemberQuery(m, trimmedQuery))
+    : [];
+
+  const handleOpenMember = (memberId: string) => {
+    router.push({
+      pathname: '/(family)/member/[id]',
+      params: { id: memberId },
+    });
+  };
+
   return (
-    <View style={[styles.bookCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={onPressDetails}
+      style={[
+        styles.bookCard,
+        {
+          backgroundColor: theme.card,
+          borderColor: hasSearch && (isHeadMatched || matchedNonHeadMembers.length > 0) ? theme.primary : theme.border,
+        },
+      ]}
+    >
       {/* Booklet Header Bar */}
       <View style={[styles.headerBanner, { backgroundColor: theme.primaryLight }]}>
         <View style={styles.headerLeft}>
@@ -75,6 +105,15 @@ export function BookletCard({ item, onPressDetails }: BookletCardProps) {
             <Badge label="વડા" variant="primary" size="sm" />
           </View>
 
+          {/* If Head matched search query directly, show match highlight badge */}
+          {headMatchBadge ? (
+            <View style={[styles.matchBadge, { backgroundColor: '#FEF2F2', borderColor: '#F87171' }]}>
+              <Text style={[styles.matchBadgeText, { color: '#DC2626' }]}>
+                {headMatchBadge}
+              </Text>
+            </View>
+          ) : null}
+
           {/* Clickable Mobile */}
           {headMember?.mobile ? (
             <TouchableOpacity
@@ -104,58 +143,83 @@ export function BookletCard({ item, onPressDetails }: BookletCardProps) {
         </View>
       </View>
 
-      <View style={[styles.divider, { backgroundColor: theme.border }]} />
+      {/* If Search is Active and Non-Head Members Matched: Show matched members with head */}
+      {hasSearch && matchedNonHeadMembers.length > 0 ? (
+        <View style={[styles.matchedSection, { backgroundColor: theme.backgroundElement, borderTopColor: theme.border }]}>
+          <View style={styles.matchedSectionHeader}>
+            <Ionicons name="search" size={12} color={theme.primary} />
+            <Text style={[styles.matchedSectionTitle, { color: theme.primary }]}>
+              મેળ ખાતા પરિવારના સભ્યો ({matchedNonHeadMembers.length}):
+            </Text>
+          </View>
 
-      {/* Members Directory Mini-Table */}
-      <View style={styles.membersTable}>
-        <Text style={[styles.tableSectionTitle, { color: theme.textSecondary }]}>
-          પરિવારના સભ્યો / Family Members:
-        </Text>
+          <View style={styles.matchedList}>
+            {matchedNonHeadMembers.map((m) => {
+              const matchBadge = getMemberMatchHighlight(m, trimmedQuery);
+              return (
+                <TouchableOpacity
+                  key={m.id}
+                  activeOpacity={0.75}
+                  onPress={() => handleOpenMember(m.id)}
+                  style={[styles.matchedMemberRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                >
+                  <Avatar
+                    name={m.name}
+                    photoUrl={m.photo_url}
+                    gender={m.gender}
+                    size={36}
+                    enablePreview={false}
+                  />
 
-        {members.map((m, index) => {
-          const occDisplay = getOccupationDisplay(m.occupation_type);
-          const eduDisplay = m.education_status;
+                  <View style={styles.matchedMemberInfo}>
+                    <View style={styles.matchedMemberTopRow}>
+                      <Text style={[styles.matchedMemberName, { color: theme.text }]} numberOfLines={1}>
+                        {m.name}
+                      </Text>
+                      <Text style={[styles.matchedMemberRelation, { color: theme.textSecondary }]}>
+                        {m.display_relation || m.relation}
+                      </Text>
+                    </View>
 
-          return (
-            <View
-              key={m.id || index}
-              style={[
-                styles.memberRow,
-                index < members.length - 1 ? { borderBottomColor: theme.border, borderBottomWidth: 1 } : null,
-              ]}
-            >
-              {/* Name & Relation */}
-              <View style={styles.memberNameCol}>
-                <Text style={[styles.memberNameText, { color: theme.text }]} numberOfLines={1}>
-                  {m.is_deceased ? `🕊️ સ્વ. ${m.name}` : m.name}
-                </Text>
-                <Text style={[styles.memberRelationText, { color: theme.textSecondary }]}>
-                  {m.display_relation || m.relation} • {m.is_deceased ? '🕊️ સ્વર્ગસ્થ' : formatAgeShort(m.dob, m.age)}
-                </Text>
-              </View>
+                    <View style={styles.matchedMemberMetaRow}>
+                      {matchBadge ? (
+                        <View style={[styles.matchBadge, { backgroundColor: '#FEF2F2', borderColor: '#F87171' }]}>
+                          <Text style={[styles.matchBadgeText, { color: '#DC2626' }]}>
+                            {matchBadge}
+                          </Text>
+                        </View>
+                      ) : null}
 
-              {/* Tags for Edu & Occupation */}
-              <View style={styles.memberTagsCol}>
-                {eduDisplay ? (
-                  <View style={[styles.miniTag, { backgroundColor: theme.backgroundElement }]}>
-                    <Text style={[styles.miniTagText, { color: theme.text }]} numberOfLines={1}>
-                      🎓 {eduDisplay}
-                    </Text>
+                      {m.blood_group && matchBadge && !matchBadge.includes('બ્લડ') ? (
+                        <View style={[styles.miniBadge, { backgroundColor: theme.primaryLight }]}>
+                          <Text style={[styles.miniBadgeText, { color: theme.primary }]}>
+                            🩸 {m.blood_group}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {m.mobile ? (
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => handleCall(m.mobile)}
+                          style={styles.matchedCallBtn}
+                        >
+                          <Ionicons name="call" size={11} color={theme.primary} />
+                          <Text style={[styles.matchedCallText, { color: theme.primary }]}>
+                            {m.mobile}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
                   </View>
-                ) : null}
 
-                {occDisplay ? (
-                  <View style={[styles.miniTag, { backgroundColor: theme.primaryLight }]}>
-                    <Text style={[styles.miniTagText, { color: theme.primary }]} numberOfLines={1}>
-                      💼 {occDisplay}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          );
-        })}
-      </View>
+                  <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
 
       {/* Booklet Card Footer Button */}
       <View style={[styles.footerRow, { backgroundColor: theme.backgroundElement, borderTopColor: theme.border }]}>
@@ -166,7 +230,7 @@ export function BookletCard({ item, onPressDetails }: BookletCardProps) {
             style={styles.footerMainBtn}
           >
             <Text style={[styles.footerBtnText, { color: theme.primary }]}>
-              સંપૂર્ણ પરિચય પુસ્તિકા પેજ / Details
+              સંપૂર્ણ વિગતો જુઓ / View Details
             </Text>
             <Ionicons name="chevron-forward" size={15} color={theme.primary} />
           </TouchableOpacity>
@@ -181,7 +245,7 @@ export function BookletCard({ item, onPressDetails }: BookletCardProps) {
           <Text style={[styles.quickPdfText, { color: theme.primary }]}>PDF</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -281,54 +345,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     flex: 1,
   },
-  divider: {
-    height: 1,
-    marginHorizontal: 14,
-  },
-  membersTable: {
-    padding: 14,
-    paddingTop: 10,
-  },
-  tableSectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  memberRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    gap: 8,
-  },
-  memberNameCol: {
-    flex: 1,
-  },
-  memberNameText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  memberRelationText: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  memberTagsCol: {
-    alignItems: 'flex-end',
-    gap: 4,
-    maxWidth: '48%',
-  },
-  miniTag: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    maxWidth: '100%',
-  },
-  miniTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -360,5 +376,86 @@ const styles = StyleSheet.create({
   quickPdfText: {
     fontSize: 11,
     fontWeight: '800',
+  },
+  matchBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  matchBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  miniBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  miniBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  matchedSection: {
+    padding: 12,
+    borderTopWidth: 1,
+  },
+  matchedSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  matchedSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  matchedList: {
+    gap: 8,
+  },
+  matchedMemberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 10,
+  },
+  matchedMemberInfo: {
+    flex: 1,
+  },
+  matchedMemberTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  matchedMemberName: {
+    fontSize: 13,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  matchedMemberRelation: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  matchedMemberMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  matchedCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  matchedCallText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

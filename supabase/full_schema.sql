@@ -88,6 +88,9 @@ CREATE TABLE IF NOT EXISTS public.family_members (
     education_status TEXT,
     occupation_type TEXT,
     occupation_details JSONB DEFAULT '{}'::jsonb,
+    blood_group TEXT,
+    birth_place TEXT,
+    can_edit_family BOOLEAN NOT NULL DEFAULT false,
     status record_status NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -236,10 +239,7 @@ INSERT INTO public.areas (name, city, state) VALUES
 ('Maninagar', 'Ahmedabad', 'Gujarat'),
 ('Ghatlodia', 'Ahmedabad', 'Gujarat'),
 ('Satellite', 'Ahmedabad', 'Gujarat'),
-('Gandhinagar', 'Gandhinagar', 'Gujarat'),
-('Surat', 'Surat', 'Gujarat'),
-('Vadodara', 'Vadodara', 'Gujarat'),
-('Rajkot', 'Rajkot', 'Gujarat')
+('Gandhinagar', 'Gandhinagar', 'Gujarat')
 ON CONFLICT DO NOTHING;
 
 -- 15. STORAGE BUCKET & POLICIES FOR MEMBER PHOTOS
@@ -267,3 +267,57 @@ DROP POLICY IF EXISTS "Allow photo deletes in member-photos" ON storage.objects;
 CREATE POLICY "Allow photo deletes in member-photos"
 ON storage.objects FOR DELETE
 USING (bucket_id = 'member-photos');
+
+-- 16. PERMANENT ACCOUNT & FAMILY DELETION RPC
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+    current_user_id UUID;
+    fam_id UUID;
+BEGIN
+    current_user_id := auth.uid();
+    IF current_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Find family where current user is head
+    SELECT id INTO fam_id FROM public.families WHERE head_user_id = current_user_id;
+
+    IF fam_id IS NOT NULL THEN
+        -- Delete education and occupation records
+        DELETE FROM public.education_records WHERE family_member_id IN (
+            SELECT id FROM public.family_members WHERE family_id = fam_id
+        );
+        DELETE FROM public.occupation_records WHERE family_member_id IN (
+            SELECT id FROM public.family_members WHERE family_id = fam_id
+        );
+        -- Delete relationships
+        DELETE FROM public.family_relationships WHERE family_id = fam_id;
+
+        -- Delete member edit access if table exists
+        BEGIN
+            DELETE FROM public.member_edit_access WHERE family_id = fam_id;
+        EXCEPTION WHEN undefined_table THEN
+            NULL;
+        END;
+
+        -- Delete members
+        DELETE FROM public.family_members WHERE family_id = fam_id;
+        -- Delete family
+        DELETE FROM public.families WHERE id = fam_id;
+    END IF;
+
+    -- Delete profile
+    DELETE FROM public.profiles WHERE auth_user_id = current_user_id;
+
+    -- Delete auth user
+    DELETE FROM auth.users WHERE id = current_user_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;
+

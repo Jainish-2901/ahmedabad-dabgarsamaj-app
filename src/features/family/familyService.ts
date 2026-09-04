@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Area, Family, FamilyMember } from '@/types/database';
 import { calculateAge, formatDate, formatDateForDB } from '@/lib/utils/date';
 import { getRelationshipDisplay } from '@/constants/relationships';
-import { DEFAULT_AREAS, localAppStore, persistAppStore, restoreAppStore } from './familyStore';
+import { DEFAULT_AREAS, localAppStore, persistAppStore, restoreAppStore, clearAppStore } from './familyStore';
 
 export interface CreateFamilyInput {
   name: string;
@@ -18,6 +18,8 @@ export interface CreateFamilyInput {
   education_status?: string;
   occupation_type?: string;
   head_user_id?: string;
+  blood_group?: string | null;
+  birth_place?: string | null;
 }
 
 export const familyService = {
@@ -40,11 +42,12 @@ export const familyService = {
         return { data: DEFAULT_AREAS };
       }
 
-      // Deduplicate by area name
+      // Deduplicate by area name and filter out excluded areas
+      const excludedAreas = new Set(['rajkot', 'surat', 'vadodara']);
       const uniqueMap = new Map<string, Area>();
       ((data as Area[]) || []).forEach((a) => {
         const cleanName = a.name.trim().toLowerCase();
-        if (!uniqueMap.has(cleanName)) {
+        if (!excludedAreas.has(cleanName) && !uniqueMap.has(cleanName)) {
           uniqueMap.set(cleanName, a);
         }
       });
@@ -138,8 +141,12 @@ export const familyService = {
               const members: FamilyMember[] = membersData.map((m: any) => {
                 const isDeceased = m.is_deceased === true || m.status === 'DECEASED' || m.occupation_details?.is_deceased === true;
                 const deceasedDate = m.deceased_date || m.occupation_details?.deceased_date || null;
+                const canEdit = m.can_edit_family === true || m.occupation_details?.can_edit_family === true || m.relation === 'FAMILY_HEAD';
                 return {
                   ...m,
+                  can_edit_family: canEdit,
+                  blood_group: m.blood_group || m.occupation_details?.blood_group || null,
+                  birth_place: m.birth_place || m.occupation_details?.birth_place || null,
                   is_deceased: isDeceased,
                   deceased_date: deceasedDate,
                   age: calculateAge(m.dob),
@@ -230,8 +237,12 @@ export const familyService = {
             const members: FamilyMember[] = membersData.map((m: any) => {
               const isDeceased = m.is_deceased === true || m.status === 'DECEASED' || m.occupation_details?.is_deceased === true;
               const deceasedDate = m.deceased_date || m.occupation_details?.deceased_date || null;
+              const canEdit = m.can_edit_family === true || m.occupation_details?.can_edit_family === true || m.relation === 'FAMILY_HEAD';
               return {
                 ...m,
+                can_edit_family: canEdit,
+                blood_group: m.blood_group || m.occupation_details?.blood_group || null,
+                birth_place: m.birth_place || m.occupation_details?.birth_place || null,
                 is_deceased: isDeceased,
                 deceased_date: deceasedDate,
                 age: calculateAge(m.dob),
@@ -407,6 +418,8 @@ export const familyService = {
       residence_type: 'SAME_AS_FAMILY',
       education_status: input.education_status || null,
       occupation_type: input.occupation_type || null,
+      blood_group: input.blood_group || null,
+      birth_place: input.birth_place || null,
       status: 'ACTIVE',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -499,7 +512,7 @@ export const familyService = {
       let headData = existingHead;
 
       if (!headData) {
-        const { data: insertedHead, error: headError } = await supabase.from('family_members').insert({
+        const headPayload: any = {
           family_id: familyData.id,
           name: input.name.trim(),
           gender: input.gender,
@@ -510,8 +523,28 @@ export const familyService = {
           residence_type: 'SAME_AS_FAMILY',
           education_status: input.education_status || null,
           occupation_type: input.occupation_type || null,
+          blood_group: input.blood_group || null,
+          birth_place: input.birth_place || null,
+          occupation_details: {
+            blood_group: input.blood_group || null,
+            birth_place: input.birth_place || null,
+          },
           status: 'ACTIVE',
-        }).select().single();
+        };
+
+        let { data: insertedHead, error: headError } = await supabase
+          .from('family_members')
+          .insert(headPayload)
+          .select()
+          .single();
+
+        if (headError && (headError.message?.includes('blood_group') || headError.message?.includes('birth_place') || headError.code === 'PGRST204')) {
+          delete headPayload.blood_group;
+          delete headPayload.birth_place;
+          const retryRes = await supabase.from('family_members').insert(headPayload).select().single();
+          insertedHead = retryRes.data;
+          headError = retryRes.error;
+        }
 
         if (headError) {
           console.error('Head member insert error:', headError);
@@ -519,7 +552,7 @@ export const familyService = {
         }
         headData = insertedHead;
       } else {
-        const { data: updatedHead } = await supabase.from('family_members').update({
+        const updateHeadPayload: any = {
           name: input.name.trim(),
           gender: input.gender,
           photo_url: input.photo_url || existingHead.photo_url,
@@ -528,7 +561,25 @@ export const familyService = {
           education_status: input.education_status || existingHead.education_status,
           occupation_type: input.occupation_type || existingHead.occupation_type,
           updated_at: new Date().toISOString(),
-        }).eq('id', headData.id).select().single();
+        };
+
+        if (input.blood_group !== undefined) updateHeadPayload.blood_group = input.blood_group;
+        if (input.birth_place !== undefined) updateHeadPayload.birth_place = input.birth_place;
+
+        let { data: updatedHead, error: updateHeadError } = await supabase
+          .from('family_members')
+          .update(updateHeadPayload)
+          .eq('id', headData.id)
+          .select()
+          .single();
+
+        if (updateHeadError && (updateHeadError.message?.includes('blood_group') || updateHeadError.message?.includes('birth_place') || updateHeadError.code === 'PGRST204')) {
+          delete updateHeadPayload.blood_group;
+          delete updateHeadPayload.birth_place;
+          const retryRes = await supabase.from('family_members').update(updateHeadPayload).eq('id', headData.id).select().single();
+          updatedHead = retryRes.data;
+        }
+
         if (updatedHead) headData = updatedHead;
       }
 
@@ -597,5 +648,55 @@ export const familyService = {
     }
 
     return { family: localAppStore.currentFamily || undefined };
+  },
+
+  /**
+   * Permanently delete a family and all associated data, members, and user profile
+   */
+  async deleteFamilyAccount(familyId?: string, userId?: string): Promise<{ error?: string }> {
+    try {
+      // 1. Permanently delete from Supabase Cloud DB
+      if (isSupabaseConfigured) {
+        // Try RPC function first (runs as security definer and cleans up auth.users as well)
+        const { error: rpcError } = await supabase.rpc('delete_user_account');
+
+        if (rpcError) {
+          console.warn('RPC delete_user_account fallback:', rpcError);
+          // Fallback to direct table deletions
+          if (familyId) {
+            const { data: memberIds } = await supabase
+              .from('family_members')
+              .select('id')
+              .eq('family_id', familyId);
+
+            if (memberIds && memberIds.length > 0) {
+              const ids = memberIds.map((m: any) => m.id);
+              await supabase.from('education_records').delete().in('family_member_id', ids);
+              await supabase.from('occupation_records').delete().in('family_member_id', ids);
+            }
+
+            await supabase.from('family_relationships').delete().eq('family_id', familyId);
+            try {
+              await supabase.from('member_edit_access').delete().eq('family_id', familyId);
+            } catch {}
+
+            await supabase.from('family_members').delete().eq('family_id', familyId);
+            await supabase.from('families').delete().eq('id', familyId);
+          }
+
+          if (userId) {
+            await supabase.from('profiles').delete().eq('auth_user_id', userId);
+          }
+        }
+      }
+
+      // 2. Clear local store completely
+      await clearAppStore();
+
+      return {};
+    } catch (err: any) {
+      console.error('deleteFamilyAccount exception:', err);
+      return { error: err.message || 'Failed to delete family account' };
+    }
   },
 };

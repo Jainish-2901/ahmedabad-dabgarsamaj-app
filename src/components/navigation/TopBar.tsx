@@ -21,7 +21,7 @@ export function TopBar({
   rightAction,
 }: TopBarProps) {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -67,16 +67,15 @@ export function TopBar({
           <View style={styles.backHeaderSection}>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={
-                onBack ||
-                (() => {
-                  if (router.canGoBack()) {
-                    router.back();
-                  } else {
-                    router.replace('/(family)/home' as any);
-                  }
-                })
-              }
+              onPress={() => {
+                if (onBack) {
+                  onBack();
+                } else if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace((user ? '/(family)/home' : '/') as any);
+                }
+              }}
               style={[styles.backBtn, { backgroundColor: theme.backgroundElement }]}
             >
               <Ionicons name="arrow-back" size={20} color={theme.text} />

@@ -40,6 +40,8 @@ export default function SetupFamilyScreen() {
   const [city, setCity] = useState('Ahmedabad');
   const [state, setState] = useState('Gujarat');
   const [pincode, setPincode] = useState('');
+  const [bloodGroup, setBloodGroup] = useState<string>('');
+  const [birthPlace, setBirthPlace] = useState<string>('');
   const [occupationType, setOccupationType] = useState('BUSINESS_OWNER');
 
   const [areas, setAreas] = useState<Area[]>([]);
@@ -105,6 +107,8 @@ export default function SetupFamilyScreen() {
       state: state.trim(),
       pincode: pincode.trim(),
       occupation_type: occupationType,
+      blood_group: bloodGroup.trim() || null,
+      birth_place: birthPlace.trim() || null,
     });
     setLoading(false);
 
@@ -245,6 +249,47 @@ export default function SetupFamilyScreen() {
             onChangeText={setMobile}
             keyboardType="phone-pad"
             maxLength={10}
+          />
+
+          {/* Blood Group */}
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.fieldLabel, { color: theme.text }]}>
+              Blood Group / બ્લડ ગ્રૂપ
+            </Text>
+            <View style={styles.bloodGrid}>
+              {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                <TouchableOpacity
+                  key={bg}
+                  activeOpacity={0.7}
+                  onPress={() => setBloodGroup(bloodGroup === bg ? '' : bg)}
+                  style={[
+                    styles.bloodChip,
+                    {
+                      backgroundColor: bloodGroup === bg ? '#DC2626' : theme.backgroundElement,
+                      borderColor: bloodGroup === bg ? '#DC2626' : theme.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.bloodChipText,
+                      { color: bloodGroup === bg ? '#FFFFFF' : theme.text },
+                    ]}
+                  >
+                    {bg}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Birth Place */}
+          <Input
+            label="Birth Place / જન્મ સ્થળ (ગામ / શહેર)"
+            placeholder="e.g. અમદાવાદ, પાટણ, વિસનગર, મહેસાણા..."
+            value={birthPlace}
+            onChangeText={setBirthPlace}
+            helperText="પરિવારના વડાનું મૂળ ગામ અથવા જન્મ સ્થળ"
           />
 
           <View style={styles.fieldGroup}>
@@ -449,5 +494,24 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 16,
+  },
+  bloodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  bloodChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bloodChipText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

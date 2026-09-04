@@ -12,6 +12,7 @@ import { Family, FamilyMember } from '@/types/database';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 export interface DigitalFamilyCardProps extends ViewProps {
   family: Family;
@@ -30,6 +31,7 @@ export function DigitalFamilyCard({
   style,
   ...props
 }: DigitalFamilyCardProps) {
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
 
@@ -143,7 +145,12 @@ export function DigitalFamilyCard({
 
           <View style={styles.thumbnailsGrid}>
             {members.map((member) => (
-              <View key={member.id} style={styles.memberChip}>
+              <TouchableOpacity
+                key={member.id}
+                style={styles.memberChip}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/(family)/member/${member.id}` as any)}
+              >
                 <Avatar
                   name={member.name}
                   photoUrl={member.photo_url}
@@ -158,7 +165,7 @@ export function DigitalFamilyCard({
                     {member.display_relation?.split('/')[0].trim() || member.relation}
                   </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>

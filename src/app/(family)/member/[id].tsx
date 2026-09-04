@@ -23,11 +23,14 @@ import { Card } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { TopBar } from '@/components/navigation/TopBar';
+import { useAuth } from '@/features/auth/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function MemberDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
+  const { user } = useAuth();
 
   const [member, setMember] = useState<FamilyMember | null>(null);
   const [education, setEducation] = useState<EducationRecord | null>(null);
@@ -38,9 +41,12 @@ export default function MemberDetailScreen() {
   const [connectedRelationLabel, setConnectedRelationLabel] = useState<string>('');
 
   const [isOwnFamily, setIsOwnFamily] = useState(false);
+  const [isViewerHead, setIsViewerHead] = useState(false);
+  const [canViewerEdit, setCanViewerEdit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [togglingPermission, setTogglingPermission] = useState(false);
 
   const loadData = async () => {
     if (!id) return;
@@ -62,7 +68,7 @@ export default function MemberDetailScreen() {
       setEducation(res.education || null);
       setOccupation(res.occupation || null);
 
-      // Fetch the member's family & check ownership
+      // Fetch the member's family & check ownership & permissions
       let targetFamily: Family | null = null;
       let targetMembers: FamilyMember[] = [];
 
@@ -73,6 +79,18 @@ export default function MemberDetailScreen() {
       if (famRes.family && famRes.family.id === currentMember.family_id) {
         targetFamily = famRes.family;
         targetMembers = famRes.members;
+
+        // Check viewer's authority:
+        // Viewer is Head if they are the head_user_id or the member with relation === 'FAMILY_HEAD'
+        const viewerIsHead = Boolean(
+          (user && famRes.family.head_user_id === user.id) ||
+          famRes.members.some((m) => m.relation === 'FAMILY_HEAD')
+        );
+        setIsViewerHead(viewerIsHead);
+
+        // Viewer can edit if they are head or if any member record matching user/family has can_edit_family
+        const viewerHasEditRights = viewerIsHead || famRes.members.some((m) => m.can_edit_family === true);
+        setCanViewerEdit(viewerHasEditRights);
       } else {
         const directFamRes = await familyService.getFamilyById(currentMember.family_id);
         if (directFamRes.family) {
@@ -109,6 +127,38 @@ export default function MemberDetailScreen() {
     loadData();
   }, [id]);
 
+  const handleTogglePermission = async () => {
+    if (!member) return;
+    const newStatus = !member.can_edit_family;
+    const actionText = newStatus ? 'પરવાનગી આપવી છે?' : 'પરવાનગી રદ કરવી છે?';
+    const detailText = newStatus
+      ? `શું તમે ${member.name} ને પરિવારની વિગતો અને સભ્યો ઉમેરવા/સુધારવાની પરવાનગી આપવા માંગો છો?`
+      : `શું તમે ${member.name} ની પરિવાર એડિટ કરવાની પરવાનગી પાછી ખેંચવા માંગો છો?`;
+
+    Alert.alert('Edit Permission / એડિટ પરવાનગી', `${actionText}\n\n${detailText}`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: newStatus ? 'હા, પરવાનગી આપો' : 'હા, રદ કરો',
+        onPress: async () => {
+          setTogglingPermission(true);
+          const res = await membersService.toggleEditPermission(member.id, newStatus);
+          setTogglingPermission(false);
+          if (res.error) {
+            Alert.alert('Error', res.error);
+          } else {
+            setMember({ ...member, can_edit_family: newStatus });
+            Alert.alert(
+              'Updated / અપડેટ થયું',
+              newStatus
+                ? `${member.name} ને હવે પરિવાર એડિટ કરવાની પરવાનગી સફળતાપૂર્વક આપવામાં આવી છે.`
+                : `${member.name} ની એડિટ પરવાનગી રદ કરવામાં આવી છે.`
+            );
+          }
+        },
+      },
+    ]);
+  };
+
   const handleDelete = () => {
     if (!member || !isOwnFamily) return;
     Alert.alert(
@@ -121,14 +171,16 @@ export default function MemberDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             setDeleting(true);
-            const res = await membersService.archiveMember(member.id);
+            const res = await membersService.deleteMember(member.id);
             setDeleting(false);
             if (res.error) {
               Alert.alert('Error', res.error);
             } else {
-              Alert.alert('Deleted', `${member.name} has been removed from your active family directory.`, [
-                { text: 'OK', onPress: () => router.replace('/(family)/home' as any) },
-              ]);
+              Alert.alert(
+                'Deleted / સફળતાપૂર્વક ડીલીટ થયું',
+                `${member.name} નું નામ અને તમામ વિગતો ડેટાબેઝમાંથી કાયમ માટે ડીલીટ કરવામાં આવી છે.`,
+                [{ text: 'OK', onPress: () => router.replace('/(family)/home' as any) }]
+              );
             }
           },
         },
@@ -229,10 +281,72 @@ export default function MemberDetailScreen() {
                     />
                   ) : null
                 )}
+                {member.blood_group ? (
+                  <Badge
+                    label={`🩸 ${member.blood_group}`}
+                    variant="neutral"
+                    size="sm"
+                    style={{ marginLeft: 6 }}
+                  />
+                ) : null}
+                {member.can_edit_family && member.relation !== 'FAMILY_HEAD' ? (
+                  <Badge
+                    label="✏️ Authorized Editor"
+                    variant="success"
+                    size="sm"
+                    style={{ marginLeft: 6 }}
+                  />
+                ) : null}
               </View>
             </View>
           </View>
         </Card>
+
+        {/* Family Head Permission Control Card (Only visible to Family Head for other living members) */}
+        {isOwnFamily && isViewerHead && member.relation !== 'FAMILY_HEAD' && !member.is_deceased ? (
+          <Card
+            style={[
+              styles.permissionCard,
+              {
+                backgroundColor: member.can_edit_family ? '#ECFDF5' : theme.card,
+                borderColor: member.can_edit_family ? '#10B981' : theme.border,
+              },
+            ]}
+          >
+            <View style={styles.permissionHeader}>
+              <View style={[styles.permissionIconCircle, { backgroundColor: member.can_edit_family ? '#D1FAE5' : theme.backgroundElement }]}>
+                <Ionicons
+                  name={member.can_edit_family ? 'shield-checkmark' : 'shield-outline'}
+                  size={24}
+                  color={member.can_edit_family ? '#059669' : theme.textSecondary}
+                />
+              </View>
+
+              <View style={styles.permissionInfo}>
+                <Text style={[styles.permissionTitle, { color: theme.text }]}>
+                  પરિવાર એડિટ પરવાનગી (Edit Access)
+                </Text>
+                <Text style={[styles.permissionSubtitle, { color: theme.textSecondary }]}>
+                  {member.can_edit_family
+                    ? `${member.name} પરિવારના સભ્યો ઉમેરી અને સુધારી શકે છે.`
+                    : `${member.name} ને પરિવાર એડિટ કરવાની પરવાનગી આપો.`}
+                </Text>
+              </View>
+            </View>
+
+            <Button
+              title={
+                member.can_edit_family
+                  ? 'પરવાનગી રદ કરો / Revoke Permission'
+                  : 'પરવાનગી આપો / Grant Edit Access'
+              }
+              variant={member.can_edit_family ? 'outline' : 'primary'}
+              loading={togglingPermission}
+              onPress={handleTogglePermission}
+              style={{ marginTop: 12 }}
+            />
+          </Card>
+        ) : null}
 
         {/* 1. Basic & Contact Details */}
         <Card style={styles.sectionCard}>
@@ -265,6 +379,26 @@ export default function MemberDetailScreen() {
               {formatDate(member.dob)}
             </Text>
           </View>
+          {member.blood_group ? (
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                બ્લડ ગ્રૂપ / Blood Group:
+              </Text>
+              <Text style={[styles.detailValue, { color: '#DC2626', fontWeight: '800' }]}>
+                🩸 {member.blood_group}
+              </Text>
+            </View>
+          ) : null}
+          {member.birth_place ? (
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                જન્મ સ્થળ / Birth Place:
+              </Text>
+              <Text style={[styles.detailValue, { color: theme.text, fontWeight: '700' }]}>
+                🏛️ {member.birth_place}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
               Mobile Number:
@@ -487,8 +621,8 @@ export default function MemberDetailScreen() {
           ) : null}
         </Card>
 
-        {/* Actions - Only visible for own family */}
-        {isOwnFamily ? (
+        {/* Actions - Visible for own family if viewer has edit permission */}
+        {isOwnFamily && canViewerEdit ? (
           <View style={styles.actionsContainer}>
             <Button
               title="Edit Member / સુધારો કરો"
@@ -583,5 +717,35 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     width: '100%',
+  },
+  permissionCard: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 14,
+  },
+  permissionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  permissionIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  permissionInfo: {
+    flex: 1,
+  },
+  permissionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  permissionSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

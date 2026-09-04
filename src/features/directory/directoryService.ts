@@ -18,6 +18,118 @@ export interface CommunityStats {
   occupationBreakdown: { type: string; count: number }[];
 }
 
+/**
+ * Comprehensive match helper checking all member fields
+ */
+export function matchesMemberQuery(m: FamilyMember, query: string): boolean {
+  if (!query) return false;
+  const q = query.trim().toLowerCase();
+  const qCompact = q.replace(/\s+/g, '');
+
+  // 1. Name & Mobile
+  if (m.name && m.name.toLowerCase().includes(q)) return true;
+  if (m.mobile && m.mobile.includes(qCompact)) return true;
+
+  // 2. Blood Group (match normalized with/without spaces, e.g. "b+", "b +", "O-")
+  if (m.blood_group) {
+    const bg = m.blood_group.toLowerCase();
+    const bgCompact = bg.replace(/\s+/g, '');
+    if (bgCompact.includes(qCompact) || bg.includes(q)) return true;
+  }
+
+  // 3. Birth Place / Native Place
+  if (m.birth_place && m.birth_place.toLowerCase().includes(q)) return true;
+
+  // 4. Relation & Display Relation
+  if (m.relation && m.relation.toLowerCase().includes(q)) return true;
+  if (m.display_relation && m.display_relation.toLowerCase().includes(q)) return true;
+
+  // 5. Education (level, course/standard, institution, status)
+  if (m.education_status && m.education_status.toLowerCase().includes(q)) return true;
+  if (m.educationRecord) {
+    const edu = m.educationRecord;
+    if (edu.course_or_standard && edu.course_or_standard.toLowerCase().includes(q)) return true;
+    if (edu.education_level && edu.education_level.toLowerCase().includes(q)) return true;
+    if (edu.institution && edu.institution.toLowerCase().includes(q)) return true;
+    if (edu.education_status && edu.education_status.toLowerCase().includes(q)) return true;
+  }
+
+  // 6. Occupation (type, company/business, designation, work location, details)
+  if (m.occupation_type && m.occupation_type.toLowerCase().includes(q)) return true;
+  if (m.occupationRecord) {
+    const occ = m.occupationRecord;
+    if (occ.organization_name && occ.organization_name.toLowerCase().includes(q)) return true;
+    if (occ.designation && occ.designation.toLowerCase().includes(q)) return true;
+    if (occ.business_name && occ.business_name.toLowerCase().includes(q)) return true;
+    if (occ.business_type && occ.business_type.toLowerCase().includes(q)) return true;
+    if (occ.work_location && occ.work_location.toLowerCase().includes(q)) return true;
+  }
+  if (m.occupation_details) {
+    const detailsStr = JSON.stringify(m.occupation_details).toLowerCase();
+    if (detailsStr.includes(q)) return true;
+  }
+
+  // 7. Residence / Separate address & city
+  if (m.separate_address && m.separate_address.toLowerCase().includes(q)) return true;
+  if (m.separate_city && m.separate_city.toLowerCase().includes(q)) return true;
+
+  return false;
+}
+
+/**
+ * Returns a short label describing which field matched the query
+ */
+export function getMemberMatchHighlight(m: FamilyMember, query: string): string | null {
+  if (!query) return null;
+  const q = query.trim().toLowerCase();
+  const qCompact = q.replace(/\s+/g, '');
+
+  if (m.blood_group) {
+    const bgCompact = m.blood_group.toLowerCase().replace(/\s+/g, '');
+    if (bgCompact.includes(qCompact) || m.blood_group.toLowerCase().includes(q)) {
+      return `🩸 બ્લડ ગ્રૂપ: ${m.blood_group}`;
+    }
+  }
+
+  if (m.birth_place && m.birth_place.toLowerCase().includes(q)) {
+    return `🏛️ જન્મ સ્થળ: ${m.birth_place}`;
+  }
+
+  if (m.mobile && m.mobile.includes(qCompact)) {
+    return `📞 ${m.mobile}`;
+  }
+
+  if (m.educationRecord?.course_or_standard && m.educationRecord.course_or_standard.toLowerCase().includes(q)) {
+    return `🎓 ${m.educationRecord.course_or_standard}`;
+  }
+  if (m.education_status && m.education_status.toLowerCase().includes(q)) {
+    return `🎓 ${m.education_status}`;
+  }
+
+  if (m.occupationRecord?.designation && m.occupationRecord.designation.toLowerCase().includes(q)) {
+    return `💼 ${m.occupationRecord.designation}`;
+  }
+  if (m.occupationRecord?.organization_name && m.occupationRecord.organization_name.toLowerCase().includes(q)) {
+    return `🏢 ${m.occupationRecord.organization_name}`;
+  }
+  if (m.occupationRecord?.business_name && m.occupationRecord.business_name.toLowerCase().includes(q)) {
+    return `🏢 ${m.occupationRecord.business_name}`;
+  }
+  if (m.occupation_type && m.occupation_type.toLowerCase().includes(q)) {
+    return `💼 ${m.occupation_type}`;
+  }
+
+  if (m.separate_city && m.separate_city.toLowerCase().includes(q)) {
+    return `📍 ${m.separate_city}`;
+  }
+
+  if (m.name && m.name.toLowerCase().includes(q)) {
+    return `👤 ${m.name}`;
+  }
+
+  return null;
+}
+
 export const directoryService = {
   /**
    * Fetch all active community families with their member lists for the directory booklet
@@ -101,8 +213,13 @@ export const directoryService = {
             m.occupation_details?.deceased_date ||
             null;
 
+          const bloodGroup = m.blood_group || m.occupation_details?.blood_group || null;
+          const birthPlace = m.birth_place || m.occupation_details?.birth_place || null;
+
           const member: FamilyMember = {
             ...m,
+            blood_group: bloodGroup,
+            birth_place: birthPlace,
             is_deceased: isDeceased,
             deceased_date: deceasedDate,
             age: calculateAge(m.dob),
@@ -143,15 +260,8 @@ export const directoryService = {
             const addressMatch = (item.family.address || '').toLowerCase().includes(query);
             const cityMatch = (item.family.city || '').toLowerCase().includes(query);
             const areaMatch = (item.family.area?.name || '').toLowerCase().includes(query);
-            const headMatch = item.headMember ? item.headMember.name.toLowerCase().includes(query) : false;
-            const anyMemberMatch = item.members.some(
-              (m) =>
-                m.name.toLowerCase().includes(query) ||
-                (m.mobile && m.mobile.includes(query)) ||
-                (m.education_status && m.education_status.toLowerCase().includes(query)) ||
-                (m.occupation_type && m.occupation_type.toLowerCase().includes(query))
-            );
-            return famCodeMatch || addressMatch || cityMatch || areaMatch || headMatch || anyMemberMatch;
+            const anyMemberMatch = item.members.some((m) => matchesMemberQuery(m, query));
+            return famCodeMatch || addressMatch || cityMatch || areaMatch || anyMemberMatch;
           });
         }
 
@@ -193,9 +303,11 @@ export const directoryService = {
     if (query) {
       items = items.filter((item) => {
         const famCodeMatch = item.family.family_code.toLowerCase().includes(query);
-        const headMatch = item.headMember ? item.headMember.name.toLowerCase().includes(query) : false;
-        const memberMatch = item.members.some((m) => m.name.toLowerCase().includes(query));
-        return famCodeMatch || headMatch || memberMatch;
+        const addressMatch = (item.family.address || '').toLowerCase().includes(query);
+        const cityMatch = (item.family.city || '').toLowerCase().includes(query);
+        const areaMatch = (item.family.area?.name || '').toLowerCase().includes(query);
+        const anyMemberMatch = item.members.some((m) => matchesMemberQuery(m, query));
+        return famCodeMatch || addressMatch || cityMatch || areaMatch || anyMemberMatch;
       });
     }
 

@@ -109,7 +109,7 @@ export function BookletTabView() {
         <View style={[styles.searchBar, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
           <Ionicons name="search" size={18} color={theme.textSecondary} />
           <TextInput
-            placeholder="Search by Name, Area, Code, Edu or Job..."
+            placeholder="Search by Name, Blood Group, Village, Job, Edu..."
             placeholderTextColor={theme.textSecondary}
             value={searchQuery}
             onChangeText={handleSearchChange}
@@ -193,6 +193,7 @@ export function BookletTabView() {
           renderItem={({ item }) => (
             <BookletCard
               item={item}
+              searchQuery={searchQuery}
               onPressDetails={() => setSelectedBookletItem(item)}
             />
           )}

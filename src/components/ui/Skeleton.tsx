@@ -56,7 +56,7 @@ export function Skeleton({
 }
 
 /**
- * Skeleton card matching the exact structure of BookletCard
+ * Skeleton card matching the exact structure of compact BookletCard
  */
 export function BookletCardSkeleton() {
   const theme = useTheme();
@@ -64,42 +64,37 @@ export function BookletCardSkeleton() {
   return (
     <Card style={styles.card}>
       {/* Top Banner Bar Skeleton */}
-      <View style={[styles.headerBanner, { backgroundColor: theme.backgroundElement }]}>
-        <View style={styles.row}>
-          <Skeleton width={80} height={20} borderRadius={6} />
-          <Skeleton width={110} height={16} borderRadius={4} />
+      <View style={[styles.headerBanner, { backgroundColor: theme.primaryLight }]}>
+        <View style={styles.headerLeft}>
+          <Skeleton width={70} height={20} borderRadius={6} />
+          <Skeleton width={80} height={16} borderRadius={4} />
         </View>
-        <Skeleton width={45} height={16} borderRadius={10} />
+        <Skeleton width={52} height={16} borderRadius={10} />
       </View>
 
       {/* Head Profile Section Skeleton */}
       <View style={styles.headSection}>
         <Skeleton width={56} height={56} borderRadius={28} />
-        <View style={{ flex: 1, gap: 6 }}>
-          <Skeleton width="65%" height={18} borderRadius={4} />
-          <Skeleton width="45%" height={14} borderRadius={4} />
-          <Skeleton width="85%" height={12} borderRadius={4} />
+        <View style={styles.headDetails}>
+          <View style={styles.headTitleRow}>
+            <Skeleton width="55%" height={17} borderRadius={4} />
+            <Skeleton width={34} height={18} borderRadius={6} />
+          </View>
+          <View style={styles.infoRow}>
+            <Skeleton width={14} height={14} borderRadius={7} />
+            <Skeleton width="45%" height={14} borderRadius={4} />
+          </View>
+          <View style={styles.infoRow}>
+            <Skeleton width={14} height={14} borderRadius={3} />
+            <Skeleton width="75%" height={12} borderRadius={4} />
+          </View>
         </View>
       </View>
 
-      {/* Members Section Skeleton */}
-      <View style={styles.membersSection}>
-        <Skeleton width="40%" height={14} borderRadius={4} style={{ marginBottom: 10 }} />
-        {[1, 2, 3].map((key) => (
-          <View key={key} style={[styles.memberRow, { borderColor: theme.border }]}>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Skeleton width="55%" height={14} borderRadius={4} />
-              <Skeleton width="35%" height={12} borderRadius={4} />
-            </View>
-            <Skeleton width={70} height={20} borderRadius={6} />
-          </View>
-        ))}
-      </View>
-
       {/* Footer Button Skeleton */}
-      <View style={[styles.footerRow, { borderColor: theme.border }]}>
-        <Skeleton width="60%" height={16} borderRadius={4} />
-        <Skeleton width={45} height={26} borderRadius={6} />
+      <View style={[styles.footerRow, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+        <Skeleton width="52%" height={16} borderRadius={4} />
+        <Skeleton width={50} height={26} borderRadius={8} />
       </View>
     </Card>
   );
@@ -117,27 +112,31 @@ export function BookletScreenSkeleton() {
       <Card style={styles.statsCard}>
         <View style={styles.statsRow}>
           <View style={styles.statsItem}>
-            <Skeleton width={40} height={20} borderRadius={4} />
-            <Skeleton width={60} height={10} borderRadius={4} style={{ marginTop: 4 }} />
+            <Skeleton width={44} height={22} borderRadius={4} />
+            <Skeleton width={65} height={10} borderRadius={4} style={{ marginTop: 4 }} />
           </View>
+          <View style={[styles.statsDivider, { backgroundColor: theme.border }]} />
           <View style={styles.statsItem}>
-            <Skeleton width={40} height={20} borderRadius={4} />
-            <Skeleton width={60} height={10} borderRadius={4} style={{ marginTop: 4 }} />
+            <Skeleton width={44} height={22} borderRadius={4} />
+            <Skeleton width={70} height={10} borderRadius={4} style={{ marginTop: 4 }} />
           </View>
+          <View style={[styles.statsDivider, { backgroundColor: theme.border }]} />
           <View style={styles.statsItem}>
-            <Skeleton width={40} height={20} borderRadius={4} />
-            <Skeleton width={60} height={10} borderRadius={4} style={{ marginTop: 4 }} />
+            <Skeleton width={44} height={22} borderRadius={4} />
+            <Skeleton width={65} height={10} borderRadius={4} style={{ marginTop: 4 }} />
           </View>
         </View>
       </Card>
 
       {/* Action Buttons Skeleton */}
       <View style={styles.actionRow}>
-        <Skeleton width="62%" height={38} borderRadius={10} />
-        <Skeleton width="35%" height={38} borderRadius={10} />
+        <Skeleton width="60%" height={38} borderRadius={10} />
+        <Skeleton width="37%" height={38} borderRadius={10} />
       </View>
 
-      {/* 2 Family Cards Skeleton */}
+      {/* Compact Family Cards Skeleton */}
+      <BookletCardSkeleton />
+      <BookletCardSkeleton />
       <BookletCardSkeleton />
       <BookletCardSkeleton />
     </View>
@@ -158,7 +157,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  row: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -167,33 +166,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 14,
     gap: 12,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  membersSection: {
-    paddingHorizontal: 14,
-    paddingBottom: 10,
+  headDetails: {
+    flex: 1,
+    gap: 6,
   },
-  memberRow: {
+  headTitleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderTopWidth: 1,
+    gap: 6,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderTopWidth: 1,
   },
   screenContainer: {
     padding: 16,
+    maxWidth: 800,
+    width: '100%',
+    alignSelf: 'center',
   },
   statsCard: {
-    padding: 14,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderRadius: 12,
   },
   statsRow: {
     flexDirection: 'row',
@@ -202,10 +208,15 @@ const styles = StyleSheet.create({
   },
   statsItem: {
     alignItems: 'center',
-    gap: 2,
+    flex: 1,
+  },
+  statsDivider: {
+    width: 1,
+    height: 28,
   },
   actionRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: 10,
     marginBottom: 16,
   },

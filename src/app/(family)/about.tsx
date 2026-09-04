@@ -40,7 +40,17 @@ export default function AboutScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <TopBar title="અમદાવાદ ડબગર સમાજ" showBack={true} onBack={() => router.back()} />
+      <TopBar
+        title="અમદાવાદ ડબગર સમાજ"
+        showBack={true}
+        onBack={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(family)/home' as any);
+          }
+        }}
+      />
 
       <ScrollView
         style={styles.scroll}
@@ -186,83 +196,82 @@ export default function AboutScreen() {
             Connect & Contact (સંપર્ક):
           </Text>
 
-          <View style={styles.socialButtonsList}>
-            {/* Direct Call */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => handleCall('+919773272749')}
-              style={[styles.socialBtn, { backgroundColor: '#10B981' }]}
-            >
-              <Ionicons name="call" size={18} color="#FFFFFF" />
-              <Text style={styles.socialBtnText}>+91 97732 72749 (Direct Call)</Text>
-              <Ionicons name="call-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
+          <View style={styles.socialIconsContainer}>
+            {/* 1st Row: 4 Icons */}
+            <View style={styles.socialIconsRow}>
+              {/* Direct Call */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleCall('+919773272749')}
+                style={[styles.socialIconBtn, { backgroundColor: '#10B981' }]}
+                accessibilityLabel="Direct Call"
+              >
+                <Ionicons name="call" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
 
-            {/* Direct WhatsApp */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => handleWhatsApp('919773272749')}
-              style={[styles.socialBtn, { backgroundColor: '#25D366' }]}
-            >
-              <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
-              <Text style={styles.socialBtnText}>WhatsApp (+91 97732 72749)</Text>
-              <Ionicons name="chatbubbles-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
+              {/* Direct WhatsApp */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleWhatsApp('919773272749')}
+                style={[styles.socialIconBtn, { backgroundColor: '#25D366' }]}
+                accessibilityLabel="WhatsApp"
+              >
+                <Ionicons name="logo-whatsapp" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
 
-            {/* Portfolio */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => Linking.openURL('https://jainishdabgar.vercel.app/')}
-              style={[styles.socialBtn, { backgroundColor: '#0284C7' }]}
-            >
-              <Ionicons name="globe-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.socialBtnText}>Portfolio / Website</Text>
-              <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
+              {/* Portfolio */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => Linking.openURL('https://jainishdabgar.vercel.app/')}
+                style={[styles.socialIconBtn, { backgroundColor: '#0284C7' }]}
+                accessibilityLabel="Portfolio"
+              >
+                <Ionicons name="globe-outline" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
 
-            {/* LinkedIn */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => Linking.openURL('https://www.linkedin.com/in/jainish-dabgar-87474a320/')}
-              style={[styles.socialBtn, { backgroundColor: '#0A66C2' }]}
-            >
-              <Ionicons name="logo-linkedin" size={18} color="#FFFFFF" />
-              <Text style={styles.socialBtnText}>LinkedIn Profile</Text>
-              <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
+              {/* LinkedIn */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => Linking.openURL('https://www.linkedin.com/in/jainish-dabgar-87474a320/')}
+                style={[styles.socialIconBtn, { backgroundColor: '#0A66C2' }]}
+                accessibilityLabel="LinkedIn"
+              >
+                <Ionicons name="logo-linkedin" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
 
-            {/* GitHub */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => Linking.openURL('https://github.com/Jainish-2901')}
-              style={[styles.socialBtn, { backgroundColor: '#24292F' }]}
-            >
-              <Ionicons name="logo-github" size={18} color="#FFFFFF" />
-              <Text style={styles.socialBtnText}>GitHub (Jainish-2901)</Text>
-              <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
+            {/* 2nd Row: 3 Icons */}
+            <View style={styles.socialIconsRow}>
+              {/* GitHub */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => Linking.openURL('https://github.com/Jainish-2901')}
+                style={[styles.socialIconBtn, { backgroundColor: '#24292F' }]}
+                accessibilityLabel="GitHub"
+              >
+                <Ionicons name="logo-github" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
 
-            {/* Instagram */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => Linking.openURL('https://www.instagram.com/dabgar_jainish_2901/')}
-              style={[styles.socialBtn, { backgroundColor: '#E1306C' }]}
-            >
-              <Ionicons name="logo-instagram" size={18} color="#FFFFFF" />
-              <Text style={styles.socialBtnText}>Instagram (@dabgar_jainish_2901)</Text>
-              <Ionicons name="open-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
+              {/* Instagram */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => Linking.openURL('https://www.instagram.com/dabgar_jainish_2901/')}
+                style={[styles.socialIconBtn, { backgroundColor: '#E1306C' }]}
+                accessibilityLabel="Instagram"
+              >
+                <Ionicons name="logo-instagram" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
 
-            {/* Email */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => handleEmail('jainishdabgar2901@gmail.com')}
-              style={[styles.socialBtn, { backgroundColor: '#EA4335' }]}
-            >
-              <Ionicons name="mail" size={18} color="#FFFFFF" />
-              <Text style={styles.socialBtnText}>jainishdabgar2901@gmail.com</Text>
-              <Ionicons name="send-outline" size={16} color="#FFFFFF" style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
+              {/* Email */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleEmail('jainishdabgar2901@gmail.com')}
+                style={[styles.socialIconBtn, { backgroundColor: '#EA4335' }]}
+                accessibilityLabel="Email"
+              >
+                <Ionicons name="mail" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={[styles.noteBox, { backgroundColor: theme.backgroundElement }]}>
@@ -272,11 +281,87 @@ export default function AboutScreen() {
           </View>
         </Card>
 
+        {/* Mobile App Download & Legal Links Card */}
+        <Card style={styles.actionLinksCard}>
+          <Text style={[styles.actionSectionTitle, { color: theme.text }]}>
+            📲 ઍપ્લિકેશન અને નીતિઓ (Downloads & Legal)
+          </Text>
+
+          {/* Download Official App Banner */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push('/download' as any)}
+            style={[styles.downloadBannerBtn, { backgroundColor: '#059669' }]}
+          >
+            <View style={styles.downloadBannerIconBox}>
+              <Ionicons name="cloud-download" size={24} color="#FFFFFF" />
+            </View>
+            <View style={styles.downloadBannerInfo}>
+              <View style={styles.downloadBannerBadgeRow}>
+                <Text style={styles.downloadBannerTitle}>ઓફિશિયલ એપ ડાઉનલોડ કરો</Text>
+                <View style={styles.livePill}>
+                  <Text style={styles.livePillText}>APK & iOS</Text>
+                </View>
+              </View>
+              <Text style={styles.downloadBannerSubtitle}>
+                Android APK અને iPhone PWA ડાયરેક્ટ ઇન્સ્ટોલ
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {/* Legal Links (Privacy & Terms) */}
+          <View style={styles.legalLinksGrid}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push('/privacy' as any)}
+              style={[styles.legalItemBtn, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+            >
+              <View style={[styles.legalIconBox, { backgroundColor: theme.primaryLight }]}>
+                <Ionicons name="shield-checkmark" size={18} color={theme.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.legalItemTitle, { color: theme.text }]}>ગોપનીયતા નીતિ</Text>
+                <Text style={[styles.legalItemSub, { color: theme.textSecondary }]}>Privacy Policy</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push('/terms' as any)}
+              style={[styles.legalItemBtn, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+            >
+              <View style={[styles.legalIconBox, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="document-text" size={18} color="#D97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.legalItemTitle, { color: theme.text }]}>નિયમો અને શરતો</Text>
+                <Text style={[styles.legalItemSub, { color: theme.textSecondary }]}>Terms & Conditions</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </Card>
+
         {/* Footer & All Rights Reserved */}
         <View style={styles.footerContainer}>
           <Text style={[styles.versionText, { color: theme.textSecondary }]}>
             અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • Version 1.0.1
           </Text>
+          <View style={styles.footerLinksRow}>
+            <TouchableOpacity onPress={() => router.push('/privacy' as any)}>
+              <Text style={[styles.footerLinkText, { color: theme.primary }]}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={{ color: theme.textSecondary }}>•</Text>
+            <TouchableOpacity onPress={() => router.push('/terms' as any)}>
+              <Text style={[styles.footerLinkText, { color: theme.primary }]}>Terms & Conditions</Text>
+            </TouchableOpacity>
+            <Text style={{ color: theme.textSecondary }}>•</Text>
+            <TouchableOpacity onPress={() => router.push('/download' as any)}>
+              <Text style={[styles.footerLinkText, { color: theme.primary }]}>Download App</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.copyrightText, { color: theme.textSecondary }]}>
             © 2026 શ્રી અમદાવાદ ડબગર સમાજ. All Rights Reserved.
           </Text>
@@ -446,58 +531,67 @@ const styles = StyleSheet.create({
     borderColor: '#0284C7',
   },
   devHeader: {
-    flexDirection: 'row',
-    gap: 14,
+    flexDirection: 'column',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
   devAvatarContainer: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     overflow: 'hidden',
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#0284C7',
     backgroundColor: '#F0F9FF',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    alignSelf: 'center',
   },
   avatarZoomBadge: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    backgroundColor: 'rgba(2, 132, 199, 0.9)',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    bottom: 3,
+    right: 3,
+    backgroundColor: 'rgba(2, 132, 199, 0.95)',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   devAvatar: {
     width: '100%',
     height: '100%',
   },
   devDetails: {
-    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   devBadge: {
     fontSize: 11,
     fontWeight: '700',
     color: '#0284C7',
-    marginBottom: 2,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   devName: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
+    textAlign: 'center',
   },
   devRole: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
+    textAlign: 'center',
   },
   devLocation: {
     fontSize: 12,
     marginTop: 2,
+    textAlign: 'center',
   },
   divider: {
     height: 1,
@@ -508,22 +602,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 10,
   },
-  socialButtonsList: {
-    gap: 8,
-    marginBottom: 14,
+  socialIconsContainer: {
+    gap: 12,
+    marginBottom: 16,
+    paddingVertical: 4,
   },
-  socialBtn: {
+  socialIconsRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    gap: 10,
+    gap: 14,
   },
-  socialBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
+  socialIconBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.15)',
+    elevation: 3,
   },
   noteBox: {
     padding: 10,
@@ -537,7 +634,101 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    gap: 4,
+    gap: 6,
+  },
+  actionLinksCard: {
+    padding: 16,
+    marginBottom: 20,
+    gap: 12,
+  },
+  actionSectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  downloadBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    gap: 12,
+    boxShadow: '0px 4px 12px rgba(5, 150, 105, 0.25)',
+    elevation: 4,
+  },
+  downloadBannerIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  downloadBannerInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  downloadBannerBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  downloadBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  livePill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  livePillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  downloadBannerSubtitle: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  legalLinksGrid: {
+    gap: 8,
+  },
+  legalItemBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  legalIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  legalItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  legalItemSub: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  footerLinksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginVertical: 4,
+  },
+  footerLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   versionText: {
     fontSize: 12,
