@@ -32,27 +32,34 @@
 - પરિવારનો ક્યુઆર કોડ, હેડનું નામ, સરનામું, બ્લડ ગ્રૂપ અને સભ્યોની યાદી.
 - પ્રિન્ટ તેમજ કાર્ડ ઇમેજ એક્સપોર્ટ કરવાની સગવડ.
 
-### 4. 🔐 મજબૂત સુરક્ષા અને ઓટીપી રિકવરી (Security & Auth)
+### 4. 🔐 મજબૂત સુરક્ષા, ઓટીપી રિકવરી અને એકાઉન્ટ ડિલીશન (Security & Privacy)
 - મોબાઈલ નંબર અથવા ઈમેલ દ્વારા લોગિન.
 - **6-Digit Email OTP Password Reset**: ઇમેઇલ પર ૬-અંકનો સત્તાવાર OTP મેળવીને પાસવર્ડ રીસેટ કરવાની સુરક્ષિત પદ્ધતિ.
 - **Live Password Strength Indicator**: મજબૂત પાસવર્ડ બનાવવા માટે ૪ નિયમો સાથેનું લાઈવ ઈન્ડિકેટર.
+- **⚠️ Danger Zone (Delete Family & Account)**: Google Play Store & Apple App Store ની ગાઇડલાઇન મુજબ ફેમિલી હેડ માટે ડબલ કન્ફર્મેશન (`DELETE`) સાથે કાયમી એકાઉન્ટ અને ડેટા ડિલીટ કરવાનો વિકલ્પ.
+- **Persistent Secure Session**: એન્ડ્રોઇડ પર એપ બંધ કર્યા પછી વારંવાર લોગઆઉટ ન થવા માટે ચંક્ડ સિક્યોર સ્ટોરેજ.
 
-### 5. 📱 ક્રોસ-પ્લેટફોર્મ & PWA સપોર્ટ (Cross-Platform & PWA)
-- **Android**: નેટિવ એન્ડ્રોઈડ એપ્લિકેશન (APK & Play Store Bundle).
-- **iOS (iPhone/iPad)**: Safari માંથી "Add to Home Screen" દ્વારા નેટિવ એપ જેવું ઇન્સ્ટોલેશન.
+### 5. 📱 ક્રોસ-પ્લેટફોર્મ, ડાઉનલોડ પેજ & PWA સપોર્ટ (Cross-Platform & PWA)
+- **Direct App Download Route (`/download`)**:
+  - **Android**: સીધી `Ahmedabad-Dabgar-Samaj.apk` ડાઉનલોડ કરવાની સુવિધા.
+  - **iOS (iPhone/iPad)**: Safari માંથી ૧ ક્લિકમાં "Add to Home Screen" કરવા માટેનું ઇન્ટરેક્ટિવ વિઝ્યુઅલ ગાઇડ મોડલ.
+- **Direct Legal Routes**:
+  - 🔒 `/privacy`: એક્શનેબલ કોલ, વોટ્સએપ અને ઈમેલ સપોર્ટ સાથે સત્તાવાર પ્રાઇવસી પોલિસી.
+  - 📄 `/terms`: સત્તાવાર નિયમો અને શરતો.
 - **Web**: હેડરમાં સત્તાવાર `Install App` પ્રોમ્પ્ટ, સંપૂર્ણ SEO અને WhatsApp / Social Sharing Rich Preview Tags.
+- **Celebration Splash**: એપ ખુલતાની સાથે જ ૩ સેકન્ડ ટાઈમર, કન્ફેટી પોપ્સ અને સમાજ આવકાર સંદેશ.
 
 ---
 
 ## 🛠️ Tech Stack / તકનીકી માળખું
 
 - **Frontend**: [React Native](https://reactnative.dev) (Expo SDK 52)
-- **Routing**: [Expo Router](https://docs.expo.dev/router/introduction/) (File-based navigation)
+- **Routing**: [Expo Router](https://docs.expo.dev/router/introduction/) (File-based navigation with direct web URLs)
 - **Styling**: React Native StyleSheet + Harmonious Community Color Tokens
-- **Backend & Database**: [Supabase](https://supabase.com) (PostgreSQL, Row Level Security, Storage Buckets, Auth)
+- **Backend & Database**: [Supabase](https://supabase.com) (PostgreSQL, Row Level Security, Storage Buckets, RPC Functions, Auth)
 - **State & Offline Caching**: SecureStore / LocalStorage hybrid persistence
 - **Icons**: Expo Vector Icons (`Ionicons`)
-- **Graphics & Capture**: `react-native-view-shot`
+- **Graphics & Effects**: Canvas Confetti & Vector Canvas
 
 ---
 
@@ -62,6 +69,13 @@
 - [Node.js](https://nodejs.org/) (v18 અથવા તેથી વધુ)
 - [npm](https://www.npmjs.com/) અથવા [yarn](https://yarnpkg.com/)
 - [Expo Go App](https://expo.dev/go) (મોબાઈલમાં ટેસ્ટિંગ માટે)
+
+### Database Setup / સુપાબેઝ સેટઅપ
+
+1. [Supabase](https://supabase.com) પર નવો પ્રોજેક્ટ બનાવો.
+2. ડેશબોર્ડમાં **SQL Editor** ખોલો.
+3. આ પ્રોજેક્ટની `supabase/full_schema.sql` ફાઈલની તમામ સ્ક્રિપ્ટ કોપી કરીને રન કરો.
+   *(આ સ્ક્રિપ્ટ તમામ ટેબલ્સ, એરિયા, ફોટો સ્ટોરેજ પોલિસી, ટ્રિગર્સ અને ડિલીટ એકાઉન્ટ RPC ૧ ક્લિકમાં સેટઅપ કરી દેશે)*
 
 ### Installation / ઇન્સ્ટોલેશન
 
@@ -81,6 +95,8 @@
    ```env
    EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   # Optional: Direct APK download URL
+   # EXPO_PUBLIC_APK_URL=https://your-project.supabase.co/storage/v1/object/public/app-releases/ahmedabad-dabgarsamaj.apk
    ```
 
 4. **ડેવલપમેન્ટ સર્વર શરૂ કરો:**
@@ -94,14 +110,14 @@
 
 ## 📦 Building the App / એપ બિલ્ડ કરવી
 
-### Android APK બિલ્ડ (Testing / Distribution):
+### Android Direct APK (ડાઉનલોડ પેજ અને ટેસ્ટિંગ માટે):
 ```bash
-eas build --platform android --profile preview
+npx eas build -p android --profile preview
 ```
 
-### Production App Bundle (Play Store):
+### Production App Bundle (Play Store અપલોડ માટે):
 ```bash
-eas build --platform android --profile production
+npx eas build -p android --profile production
 ```
 
 ---
@@ -109,24 +125,27 @@ eas build --platform android --profile production
 ## 📁 Project Structure / પ્રોજેક્ટ માળખું
 
 ```text
-├── assets/                  # લોગો, એપ આઈકોન અને સ્પ્લેશ ઈમેજીસ
-├── public/                  # PWA મેનિફેસ્ટ અને વેબ આઈકોન્સ
+├── assets/                  # લોગો, એપ આઈકોન અને ડેવલપર પ્રોફાઇલ ઇમેજ
+├── public/                  # PWA મેનિફેસ્ટ, આઈકોન્સ અને APK પ્લેસહોલ્ડર
 ├── src/
 │   ├── app/                 # Expo Router સ્ક્રીન્સ
 │   │   ├── (auth)/          # Login, Signup, Forgot Password (OTP)
-│   │   ├── (family)/        # Home, Members, Tree, Booklet, Profile, About
+│   │   ├── (family)/        # Home, Members, Tree, Booklet, Profile (Danger Zone), About
+│   │   ├── download.tsx     # Direct APK & iOS PWA Download Page (/download)
+│   │   ├── privacy.tsx      # Official Privacy Policy (/privacy)
+│   │   ├── terms.tsx        # Official Terms & Conditions (/terms)
 │   │   └── +html.tsx        # Web PWA Root & SEO Meta Tags
 │   ├── components/
 │   │   ├── booklet/         # પરિચય પુસ્તિકા કાર્ડ અને વિગત મોડલ
 │   │   ├── family/          # ડિજિટલ ફેમિલી કાર્ડ અને ટેબ્સ
-│   │   ├── navigation/      # ટોપબાર (PWA Install Button સાથે) અને ટેબબાર
+│   │   ├── navigation/      # ટોપબાર (Safe Back & PWA Button) અને ટેબબાર
 │   │   ├── tree/            # ફેમિલી ટ્રી નોડ અને પ્રોફાઇલ પોપઅપ
-│   │   └── ui/              # બટન, ઇનપુટ, પાસવર્ડ મીટર, અવતાર, સ્કેલેટન
+│   │   └── ui/              # કન્ફેટી કેનન, બટન, ઇનપુટ, પાસવર્ડ મીટર, સ્કેલેટન
 │   ├── constants/           # થીમ, સંબંધો, શિક્ષણ અને વ્યવસાય લિસ્ટ
 │   ├── features/            # Auth, Directory, Family, Members, Tree Services
-│   ├── lib/                 # Supabase ક્લાયન્ટ અને યુટિલિટીઝ (PDF, Date)
+│   ├── lib/                 # Supabase ક્લાયન્ટ (Chunked Storage) અને યુટિલિટીઝ (PDF, Date)
 │   └── types/               # TypeScript ડેટાબેઝ ટાઇપ્સ
-├── supabase/                # ડેટાબેઝ સ્કીમા અને માઈગ્રેશન સ્ક્રિપ્ટ્સ
+├── supabase/                # ડેટાબેઝ સ્કીમા અને માઈગ્રેશન સ્ક્રિપ્ટ્સ (full_schema.sql)
 ├── app.json                 # Expo રૂપરેખાંકન
 └── eas.json                 # EAS બિલ્ડ રૂપરેખાંકન
 ```
