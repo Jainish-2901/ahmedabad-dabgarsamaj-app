@@ -2,13 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-export const supabaseUrl =
-  process.env.EXPO_PUBLIC_SUPABASE_URL ||
-  'https://blyjzgurrjhnheczwmvw.supabase.co';
-
-export const supabaseAnonKey =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJseWp6Z3VycmpobmhlY3p3bXZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNjMyNjUsImV4cCI6MjEwMzkzOTI2NX0.DkrjV51qGd6JnvNXIcRT0rTO8Xu639_5aQG_zz7jiJU';
+export const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+export const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Custom storage adapter ensuring persistent session storage across app restarts on Native & Web
 // Expo SecureStore on Android has a strict 2048-byte limit per key.
@@ -110,7 +105,7 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-export const isSupabaseConfigured = true;
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 declare global {
   var __supabaseClientInstance: any;
