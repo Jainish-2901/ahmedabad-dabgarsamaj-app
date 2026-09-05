@@ -148,13 +148,9 @@ export const directoryService = {
         // 1. Query all active families
         let familyQuery = supabase
           .from('families')
-          .select('*, area:areas(*)')
+          .select('*')
           .eq('status', 'ACTIVE')
           .order('family_code', { ascending: true });
-
-        if (filterAreaId && filterAreaId !== 'all') {
-          familyQuery = familyQuery.eq('area_id', filterAreaId);
-        }
 
         const { data: familiesData, error: famErr } = await familyQuery;
         if (famErr) {

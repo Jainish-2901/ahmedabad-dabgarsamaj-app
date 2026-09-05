@@ -24,39 +24,12 @@ export interface CreateFamilyInput {
 
 export const familyService = {
   /**
-   * Fetch all active areas for selection
+   * Fetch all active areas (deprecated: areas are now removed)
    */
   async getAreas(): Promise<{ data: Area[]; error?: string }> {
-    if (!isSupabaseConfigured) {
-      return { data: DEFAULT_AREAS };
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('areas')
-        .select('*')
-        .eq('status', 'ACTIVE')
-        .order('name', { ascending: true });
-
-      if (error || !data || data.length === 0) {
-        return { data: DEFAULT_AREAS };
-      }
-
-      // Deduplicate by area name and filter out excluded areas
-      const excludedAreas = new Set(['rajkot', 'surat', 'vadodara']);
-      const uniqueMap = new Map<string, Area>();
-      ((data as Area[]) || []).forEach((a) => {
-        const cleanName = a.name.trim().toLowerCase();
-        if (!excludedAreas.has(cleanName) && !uniqueMap.has(cleanName)) {
-          uniqueMap.set(cleanName, a);
-        }
-      });
-
-      return { data: Array.from(uniqueMap.values()) };
-    } catch {
-      return { data: DEFAULT_AREAS };
-    }
+    return { data: [] };
   },
+
 
   /**
    * Get current user's family and members from Supabase Cloud DB with offline fallback
@@ -81,7 +54,7 @@ export const familyService = {
           // 1. Fetch family for this user as head
           let { data: familyData, error: familyError } = await supabase
             .from('families')
-            .select('*, area:areas(*)')
+            .select('*')
             .eq('head_user_id', userId)
             .eq('status', 'ACTIVE')
             .maybeSingle();
@@ -104,7 +77,7 @@ export const familyService = {
               if (memberByPhone?.family_id) {
                 const { data: famById } = await supabase
                   .from('families')
-                  .select('*, area:areas(*)')
+                  .select('*')
                   .eq('id', memberByPhone.family_id)
                   .eq('status', 'ACTIVE')
                   .maybeSingle();
@@ -129,7 +102,7 @@ export const familyService = {
                 if (memberByEmail?.family_id) {
                   const { data: famById } = await supabase
                     .from('families')
-                    .select('*, area:areas(*)')
+                    .select('*')
                     .eq('id', memberByEmail.family_id)
                     .eq('status', 'ACTIVE')
                     .maybeSingle();
@@ -143,7 +116,7 @@ export const familyService = {
           if (!familyData) {
             const { data: latestFamily } = await supabase
               .from('families')
-              .select('*, area:areas(*)')
+              .select('*')
               .eq('status', 'ACTIVE')
               .order('created_at', { ascending: false })
               .limit(1)
@@ -249,7 +222,7 @@ export const familyService = {
       try {
         const { data: familyData, error: familyError } = await supabase
           .from('families')
-          .select('*, area:areas(*)')
+          .select('*')
           .eq('id', familyId)
           .maybeSingle();
 
@@ -415,7 +388,6 @@ export const familyService = {
    * Create a new family and automatically create the Family Head member record
    */
   async createFamilyWithHead(input: CreateFamilyInput): Promise<{ family?: Family; error?: string }> {
-    const area = DEFAULT_AREAS.find((a) => a.id === input.area_id);
     const newFamilyId = 'fam-' + Date.now();
     const headMemberId = 'mem-' + Date.now();
     const familyCode = 'FAM-' + Math.floor(100000 + Math.random() * 900000);
@@ -425,8 +397,8 @@ export const familyService = {
       family_code: familyCode,
       head_user_id: 'user-' + Date.now(),
       address: input.address.trim(),
-      area_id: input.area_id || null,
-      area: area || null,
+      area_id: null,
+      area: null,
       city: input.city.trim() || 'Ahmedabad',
       state: input.state.trim() || 'Gujarat',
       pincode: input.pincode.trim(),
@@ -499,7 +471,7 @@ export const familyService = {
           .insert({
             head_user_id: userId,
             address: input.address.trim(),
-            area_id: input.area_id && !input.area_id.startsWith('area-') ? input.area_id : null,
+            area_id: null,
             city: input.city.trim() || 'Ahmedabad',
             state: input.state.trim() || 'Gujarat',
             pincode: input.pincode.trim(),
@@ -519,7 +491,7 @@ export const familyService = {
           .from('families')
           .update({
             address: input.address.trim(),
-            area_id: input.area_id && !input.area_id.startsWith('area-') ? input.area_id : null,
+            area_id: null,
             city: input.city.trim() || 'Ahmedabad',
             state: input.state.trim() || 'Gujarat',
             pincode: input.pincode.trim(),

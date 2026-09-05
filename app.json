@@ -2,7 +2,13 @@
   "expo": {
     "name": "Dabgar Samaj",
     "slug": "community-family",
-    "version": "1.0.1",
+    "version": "1.0.2",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f1954d07-e261-4ce2-8c81-ee985728a215"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dabgarsamaj",

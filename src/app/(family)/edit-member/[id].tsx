@@ -14,7 +14,7 @@ import { useTheme } from '@/constants/theme';
 import { membersService } from '@/features/members/membersService';
 import { familyService } from '@/features/family/familyService';
 import { relationshipsService } from '@/features/tree/relationshipsService';
-import { Area, Family, FamilyMember } from '@/types/database';
+import { Family, FamilyMember } from '@/types/database';
 import { RELATIONSHIPS } from '@/constants/relationships';
 import {
   EDUCATION_LEVELS,
@@ -42,7 +42,6 @@ export default function EditMemberScreen() {
   const [error, setError] = useState('');
   const [family, setFamily] = useState<Family | null>(null);
   const [otherMembers, setOtherMembers] = useState<FamilyMember[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
 
   // Active Tab / Section
   const [activeSection, setActiveSection] = useState<'basic' | 'education' | 'occupation' | 'residence'>('basic');
@@ -77,8 +76,6 @@ export default function EditMemberScreen() {
   // 4. Residence Details
   const [residenceType, setResidenceType] = useState<'SAME_AS_FAMILY' | 'SEPARATE'>('SAME_AS_FAMILY');
   const [separateAddress, setSeparateAddress] = useState('');
-  const [separateAreaId, setSeparateAreaId] = useState('');
-  const [customSeparateArea, setCustomSeparateArea] = useState('');
   const [separateCity, setSeparateCity] = useState('');
   const [separatePincode, setSeparatePincode] = useState('');
 
@@ -86,9 +83,6 @@ export default function EditMemberScreen() {
     if (!id) return;
 
     const loadAll = async () => {
-      const areaRes = await familyService.getAreas();
-      setAreas(areaRes.data);
-
       const famRes = await familyService.getMyFamily();
       if (famRes.family) {
         setFamily(famRes.family);
@@ -142,7 +136,6 @@ export default function EditMemberScreen() {
         setRelation(m.relation);
         setResidenceType(m.residence_type);
         setSeparateAddress(m.separate_address || '');
-        setSeparateAreaId(m.separate_area_id || '');
         setSeparateCity(m.separate_city || '');
         setSeparatePincode(m.separate_pincode || '');
 
@@ -228,10 +221,8 @@ export default function EditMemberScreen() {
         blood_group: bloodGroup.trim() || null,
         birth_place: birthPlace.trim() || null,
         residence_type: residenceType,
-        separate_address: residenceType === 'SEPARATE' && separateAreaId === 'other' && customSeparateArea.trim()
-          ? `${separateAddress.trim()} (${customSeparateArea.trim()})`
-          : separateAddress.trim() || null,
-        separate_area_id: residenceType === 'SEPARATE' && separateAreaId !== 'other' ? separateAreaId || null : null,
+        separate_address: residenceType === 'SEPARATE' ? separateAddress.trim() || null : null,
+        separate_area_id: null,
         separate_city: residenceType === 'SEPARATE' ? separateCity.trim() || null : null,
         separate_pincode: residenceType === 'SEPARATE' ? separatePincode.trim() || null : null,
         occupation_type: occupationType,
@@ -319,7 +310,6 @@ export default function EditMemberScreen() {
 
   const selectedOcc = OCCUPATIONS.find((o) => o.code === occupationType);
   const availableCourses = getCoursesForLevel(educationLevel);
-  const familyArea = areas.find((a) => a.id === family?.area_id);
 
   return (
     <KeyboardAvoidingView
@@ -789,46 +779,12 @@ export default function EditMemberScreen() {
                   {family?.address || 'Family primary residence'}
                 </Text>
                 <Text style={[styles.previewText, { color: theme.textSecondary }]}>
-                  {familyArea?.name || family?.city} - {family?.pincode}
+                  {family?.city || 'Ahmedabad'} - {family?.pincode}
                 </Text>
               </View>
             ) : (
               <View style={{ marginTop: 14 }}>
                 <Input label="Separate Address / સરનામું *" value={separateAddress} onChangeText={setSeparateAddress} multiline />
-
-                {/* Area Selector */}
-                <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: theme.text }]}>Area / વિસ્તાર</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
-                    {areas.map((a) => (
-                      <TouchableOpacity
-                        key={a.id}
-                        onPress={() => setSeparateAreaId(a.id)}
-                        style={[
-                          styles.areaPill,
-                          {
-                            backgroundColor: separateAreaId === a.id ? theme.primary : theme.backgroundElement,
-                            borderColor: separateAreaId === a.id ? theme.primary : theme.border,
-                          },
-                        ]}
-                      >
-                        <Text style={[styles.areaPillText, { color: separateAreaId === a.id ? '#FFFFFF' : theme.text }]}>
-                          {a.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-
-                  {separateAreaId === 'other' ? (
-                    <Input
-                      label="Enter Custom Area Name / વિસ્તારનું નામ લખો *"
-                      placeholder="e.g. Isanpur / Chandlodia / Village name"
-                      value={customSeparateArea}
-                      onChangeText={setCustomSeparateArea}
-                      style={{ marginTop: 10 }}
-                    />
-                  ) : null}
-                </View>
 
                 <View style={styles.rowTwo}>
                   <View style={{ flex: 1, marginRight: 8 }}>

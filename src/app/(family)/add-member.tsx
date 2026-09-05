@@ -14,7 +14,7 @@ import { useTheme } from '@/constants/theme';
 import { familyService } from '@/features/family/familyService';
 import { membersService } from '@/features/members/membersService';
 import { relationshipsService } from '@/features/tree/relationshipsService';
-import { Area, Family, FamilyMember } from '@/types/database';
+import { Family, FamilyMember } from '@/types/database';
 import { RELATIONSHIPS } from '@/constants/relationships';
 import {
   EDUCATION_LEVELS,
@@ -41,7 +41,6 @@ export default function AddMemberScreen() {
   // Family State
   const [family, setFamily] = useState<Family | null>(null);
   const [existingMembers, setExistingMembers] = useState<FamilyMember[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
 
   // Step 1: Basic
   const [name, setName] = useState('');
@@ -73,8 +72,6 @@ export default function AddMemberScreen() {
   // Step 4: Residence
   const [residenceType, setResidenceType] = useState<'SAME_AS_FAMILY' | 'SEPARATE'>('SAME_AS_FAMILY');
   const [separateAddress, setSeparateAddress] = useState('');
-  const [separateAreaId, setSeparateAreaId] = useState('');
-  const [customSeparateArea, setCustomSeparateArea] = useState('');
   const [separateCity, setSeparateCity] = useState('Ahmedabad');
   const [separatePincode, setSeparatePincode] = useState('');
 
@@ -91,10 +88,6 @@ export default function AddMemberScreen() {
           setConnectedMemberId(res.members[0].id);
         }
       }
-    });
-    familyService.getAreas().then((res) => {
-      setAreas(res.data);
-      if (res.data.length > 0) setSeparateAreaId(res.data[0].id);
     });
   }, []);
 
@@ -186,12 +179,10 @@ export default function AddMemberScreen() {
       relation,
       mobile: mobile.trim() || undefined,
       residence_type: residenceType,
-      separate_address: residenceType === 'SEPARATE' && separateAreaId === 'other' && customSeparateArea.trim()
-        ? `${separateAddress.trim()} (${customSeparateArea.trim()})`
-        : separateAddress,
-      separate_area_id: separateAreaId !== 'other' ? separateAreaId : null,
-      separate_city: separateCity,
-      separate_pincode: separatePincode,
+      separate_address: residenceType === 'SEPARATE' ? separateAddress.trim() : undefined,
+      separate_area_id: null,
+      separate_city: residenceType === 'SEPARATE' ? separateCity.trim() : undefined,
+      separate_pincode: residenceType === 'SEPARATE' ? separatePincode.trim() : undefined,
       education_level: educationLevel,
       course_or_standard: finalCourse,
       education_status: eduStatus,
@@ -817,44 +808,7 @@ export default function AddMemberScreen() {
                   multiline
                 />
 
-                <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: theme.text }]}>Area / વિસ્તાર</Text>
-                  <View style={styles.gridWrap}>
-                    {areas.map((a) => (
-                      <TouchableOpacity
-                        key={a.id}
-                        activeOpacity={0.7}
-                        onPress={() => setSeparateAreaId(a.id)}
-                        style={[
-                          styles.gridChoiceItem,
-                          {
-                            backgroundColor: separateAreaId === a.id ? theme.primary : theme.backgroundElement,
-                            borderColor: separateAreaId === a.id ? theme.primary : theme.border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.gridChoiceText,
-                            { color: separateAreaId === a.id ? '#FFFFFF' : theme.text },
-                          ]}
-                        >
-                          {a.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
 
-                  {separateAreaId === 'other' ? (
-                    <Input
-                      label="Enter Custom Area Name / વિસ્તારનું નામ *"
-                      placeholder="e.g. Isanpur / Chandlodia / Village name"
-                      value={customSeparateArea}
-                      onChangeText={setCustomSeparateArea}
-                      style={{ marginTop: 10 }}
-                    />
-                  ) : null}
-                </View>
 
                 <View style={styles.rowTwo}>
                   <View style={{ flex: 1, marginRight: 8 }}>

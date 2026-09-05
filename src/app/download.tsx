@@ -129,7 +129,7 @@ export default function DownloadAppScreen() {
 
           <View style={[styles.versionPill, { backgroundColor: theme.primaryLight }]}>
             <Text style={[styles.versionText, { color: theme.primary }]}>
-              🚀 Official Release • v1.0.1 (Android & iOS)
+              🚀 Official Release • v1.0.2 (Android & iOS)
             </Text>
           </View>
 

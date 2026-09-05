@@ -31,17 +31,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 4. AREAS TABLE
-CREATE TABLE IF NOT EXISTS public.areas (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    city TEXT NOT NULL DEFAULT 'Ahmedabad',
-    state TEXT NOT NULL DEFAULT 'Gujarat',
-    status record_status NOT NULL DEFAULT 'ACTIVE',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- 5. FAMILY CODE SEQUENCE & GENERATOR
+-- 4. FAMILY CODE SEQUENCE & GENERATOR
 CREATE SEQUENCE IF NOT EXISTS public.family_code_seq START WITH 101;
 
 CREATE OR REPLACE FUNCTION public.generate_family_code()
@@ -51,13 +41,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 6. FAMILIES TABLE
+-- 5. FAMILIES TABLE
 CREATE TABLE IF NOT EXISTS public.families (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_code TEXT NOT NULL UNIQUE DEFAULT public.generate_family_code(),
     head_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
     address TEXT NOT NULL,
-    area_id UUID REFERENCES public.areas(id) ON DELETE SET NULL,
+    area_id UUID,
     city TEXT NOT NULL DEFAULT 'Ahmedabad',
     state TEXT NOT NULL DEFAULT 'Gujarat',
     pincode TEXT NOT NULL,
@@ -69,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.families (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 7. FAMILY MEMBERS TABLE
+-- 6. FAMILY MEMBERS TABLE
 CREATE TABLE IF NOT EXISTS public.family_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
@@ -82,7 +72,7 @@ CREATE TABLE IF NOT EXISTS public.family_members (
     relation TEXT NOT NULL,
     residence_type TEXT NOT NULL DEFAULT 'SAME_AS_FAMILY',
     separate_address TEXT,
-    separate_area_id UUID REFERENCES public.areas(id) ON DELETE SET NULL,
+    separate_area_id UUID,
     separate_city TEXT,
     separate_state TEXT,
     separate_pincode TEXT,
@@ -182,7 +172,6 @@ CREATE TRIGGER on_auth_user_created
 
 -- 13. ROW LEVEL SECURITY (RLS) POLICIES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.areas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.families ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.family_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.family_relationships ENABLE ROW LEVEL SECURITY;
@@ -227,21 +216,6 @@ CREATE POLICY "Allow update occupation" ON public.occupation_records FOR UPDATE 
 
 CREATE POLICY "Allow manage audit_logs" ON public.audit_logs FOR ALL USING (true);
 
--- 14. SEED DEFAULT AREAS
-INSERT INTO public.areas (name, city, state) VALUES
-('Nikol', 'Ahmedabad', 'Gujarat'),
-('Naroda', 'Ahmedabad', 'Gujarat'),
-('Bapunagar', 'Ahmedabad', 'Gujarat'),
-('Dabgarwad', 'Ahmedabad', 'Gujarat'),
-('Kalupur', 'Ahmedabad', 'Gujarat'),
-('Shahpur', 'Ahmedabad', 'Gujarat'),
-('Odhav', 'Ahmedabad', 'Gujarat'),
-('Vastral', 'Ahmedabad', 'Gujarat'),
-('Maninagar', 'Ahmedabad', 'Gujarat'),
-('Ghatlodia', 'Ahmedabad', 'Gujarat'),
-('Satellite', 'Ahmedabad', 'Gujarat'),
-('Gandhinagar', 'Gandhinagar', 'Gujarat')
-ON CONFLICT DO NOTHING;
 
 -- 15. STORAGE BUCKET & POLICIES FOR MEMBER PHOTOS
 INSERT INTO storage.buckets (id, name, public)

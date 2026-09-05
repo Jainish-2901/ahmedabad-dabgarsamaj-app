@@ -15,7 +15,7 @@ import { useTheme } from '@/constants/theme';
 import { membersService } from '@/features/members/membersService';
 import { familyService } from '@/features/family/familyService';
 import { relationshipsService } from '@/features/tree/relationshipsService';
-import { Area, EducationRecord, Family, FamilyMember, OccupationRecord } from '@/types/database';
+import { EducationRecord, Family, FamilyMember, OccupationRecord } from '@/types/database';
 import { formatDate, formatAgeShort } from '@/lib/utils/date';
 import { getOccupationDisplay } from '@/constants/occupations';
 import { RELATIONSHIPS } from '@/constants/relationships';
@@ -40,7 +40,6 @@ export default function MemberDetailScreen() {
   const [education, setEducation] = useState<EducationRecord | null>(null);
   const [occupation, setOccupation] = useState<OccupationRecord | null>(null);
   const [family, setFamily] = useState<Family | null>(null);
-  const [areas, setAreas] = useState<Area[]>([]);
   const [connectedPersonName, setConnectedPersonName] = useState<string>('');
   const [connectedRelationLabel, setConnectedRelationLabel] = useState<string>('');
 
@@ -55,9 +54,6 @@ export default function MemberDetailScreen() {
   const loadData = async () => {
     if (!id) return;
     setError('');
-
-    const areaRes = await familyService.getAreas();
-    setAreas(areaRes.data);
 
     const res = await membersService.getMemberById(id);
     if (res.error) {
@@ -234,7 +230,6 @@ export default function MemberDetailScreen() {
     return <ErrorState message={error || 'Member not found'} onRetry={loadData} />;
   }
 
-  const memberArea = areas.find((a) => a.id === (member.separate_area_id || family?.area_id));
   const occDetails = occupation?.details || member.occupation_details || {};
 
   return (
@@ -660,10 +655,10 @@ export default function MemberDetailScreen() {
               </View>
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                  Area / City:
+                  City / Pincode:
                 </Text>
                 <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {memberArea?.name || family.city} - {family.pincode}
+                  {family.city} - {family.pincode}
                 </Text>
               </View>
             </>
@@ -681,10 +676,10 @@ export default function MemberDetailScreen() {
               </View>
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                  Area / City:
+                  City / Pincode:
                 </Text>
                 <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {memberArea?.name || member.separate_city || 'Ahmedabad'} - {member.separate_pincode}
+                  {member.separate_city || 'Ahmedabad'} - {member.separate_pincode}
                 </Text>
               </View>
             </>
