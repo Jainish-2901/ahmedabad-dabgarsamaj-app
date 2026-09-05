@@ -34,6 +34,7 @@ export interface AddMemberInput {
   // Personal detail fields
   blood_group?: string | null;
   birth_place?: string | null;
+  email?: string | null;
   can_edit_family?: boolean;
 }
 
@@ -364,11 +365,13 @@ export const membersService = {
         null;
       const bloodGroup = memberData.blood_group || (memberData.occupation_details as any)?.blood_group || null;
       const birthPlace = memberData.birth_place || (memberData.occupation_details as any)?.birth_place || null;
+      const memberEmail = memberData.email || (memberData.occupation_details as any)?.email || null;
       const canEdit = memberData.can_edit_family === true || (memberData.occupation_details as any)?.can_edit_family === true || memberData.relation === 'FAMILY_HEAD';
 
       return {
         member: {
           ...memberData,
+          email: memberEmail,
           can_edit_family: canEdit,
           blood_group: bloodGroup,
           birth_place: birthPlace,
@@ -615,9 +618,15 @@ export const membersService = {
   },
 
   /**
-   * Toggle or set edit permission for a family member
+   * Toggle or set edit permission for a family member with their email address
    */
-  async toggleEditPermission(memberId: string, canEdit: boolean): Promise<{ error?: string }> {
+  async toggleEditPermission(
+    memberId: string,
+    canEdit: boolean,
+    email?: string | null
+  ): Promise<{ error?: string }> {
+    const cleanEmail = email ? email.trim().toLowerCase() : null;
+
     // 1. Update local store
     const idx = localAppStore.members.findIndex((m) => m.id === memberId);
     if (idx >= 0) {
@@ -626,6 +635,10 @@ export const membersService = {
         localAppStore.members[idx].occupation_details = {};
       }
       localAppStore.members[idx].occupation_details.can_edit_family = canEdit;
+      if (email !== undefined) {
+        localAppStore.members[idx].email = cleanEmail;
+        localAppStore.members[idx].occupation_details.email = cleanEmail;
+      }
       await persistAppStore();
     }
 
@@ -636,16 +649,22 @@ export const membersService = {
         const occDetails = {
           ...(member?.occupation_details || {}),
           can_edit_family: canEdit,
+          ...(email !== undefined ? { email: cleanEmail } : {}),
         };
+
+        const updatePayload: any = {
+          can_edit_family: canEdit,
+          occupation_details: occDetails,
+          updated_at: new Date().toISOString(),
+        };
+        if (email !== undefined) {
+          updatePayload.email = cleanEmail;
+        }
 
         // Try direct column update first
         const { error: directErr } = await supabase
           .from('family_members')
-          .update({
-            can_edit_family: canEdit,
-            occupation_details: occDetails,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq('id', memberId);
 
         if (directErr) {
@@ -661,6 +680,34 @@ export const membersService = {
           if (fallbackErr) {
             console.error('Failed to update member edit permission:', fallbackErr);
             return { error: fallbackErr.message };
+          }
+        }
+
+        // If permission is granted with an email, pre-register member with Supabase Auth
+        // via silent REST signup so Supabase Auth can dispatch password reset OTPs to them
+        if (canEdit && cleanEmail) {
+          try {
+            const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+            const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+            if (supabaseUrl && supabaseAnonKey) {
+              await fetch(`${supabaseUrl}/auth/v1/signup`, {
+                method: 'POST',
+                headers: {
+                  apikey: supabaseAnonKey,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  email: cleanEmail,
+                  password: 'TempPassword@' + Math.random().toString(36).slice(-8),
+                  data: {
+                    is_family_member: true,
+                    member_id: memberId,
+                  },
+                }),
+              });
+            }
+          } catch (signupErr) {
+            console.warn('Silent member auth registration notice:', signupErr);
           }
         }
       } catch (err: any) {

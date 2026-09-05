@@ -1,6 +1,5 @@
 import { Area, EducationRecord, Family, FamilyMember, FamilyRelationship } from '@/types/database';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { AppStorage } from '@/lib/storage/appStorage';
 
 export const DEFAULT_AREAS: Area[] = [
   { id: 'area-1', name: 'Nikol', city: 'Ahmedabad', state: 'Gujarat', status: 'ACTIVE', created_at: '' },
@@ -39,13 +38,7 @@ const APP_STORE_KEY = 'cf_persisted_app_store_v1';
 export async function persistAppStore(): Promise<void> {
   try {
     const serialized = JSON.stringify(localAppStore);
-    if (Platform.OS === 'web' || typeof window !== 'undefined') {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(APP_STORE_KEY, serialized);
-      }
-    } else {
-      await SecureStore.setItemAsync(APP_STORE_KEY, serialized);
-    }
+    await AppStorage.setItem(APP_STORE_KEY, serialized);
   } catch (err) {
     console.warn('Failed to persist localAppStore:', err);
   }
@@ -53,15 +46,7 @@ export async function persistAppStore(): Promise<void> {
 
 export async function restoreAppStore(): Promise<void> {
   try {
-    let serialized: string | null = null;
-    if (Platform.OS === 'web' || typeof window !== 'undefined') {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        serialized = window.localStorage.getItem(APP_STORE_KEY);
-      }
-    } else {
-      serialized = await SecureStore.getItemAsync(APP_STORE_KEY);
-    }
-
+    const serialized = await AppStorage.getItem(APP_STORE_KEY);
     if (serialized) {
       const parsed = JSON.parse(serialized);
       if (parsed) {
@@ -85,12 +70,6 @@ export async function clearAppStore(): Promise<void> {
   localAppStore.occupations = [];
 
   try {
-    if (Platform.OS === 'web' || typeof window !== 'undefined') {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.removeItem(APP_STORE_KEY);
-      }
-    } else {
-      await SecureStore.deleteItemAsync(APP_STORE_KEY);
-    }
-  } catch { }
+    await AppStorage.removeItem(APP_STORE_KEY);
+  } catch {}
 }

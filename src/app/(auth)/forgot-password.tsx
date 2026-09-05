@@ -170,12 +170,12 @@ export default function ForgotPasswordScreen() {
             /* STEP 1: Enter Identifier & Send OTP */
             <>
               <Text style={[styles.instructions, { color: theme.textSecondary }]}>
-                આપના એકાઉન્ટનો રજીસ્ટર્ડ મોબાઈલ નંબર અથવા ઈમેઈલ નાખીને ઈમેઈલ પર OTP મેળવો.
+                પરિવારના વડા (Head) અથવા એડિટ પરવાનગી ધરાવતા સભ્યનો મોબાઈલ નંબર અથવા ઈમેઈલ નાખીને ઈમેઈલ પર OTP મેળવો.
               </Text>
 
               <Input
                 label="Email or Mobile Number / ઈમેઈલ અથવા મોબાઈલ નંબર *"
-                placeholder="e.g. 9773272749 or user@example.com"
+                placeholder="e.g. 9824970902 or member@gmail.com"
                 value={identifier}
                 onChangeText={setIdentifier}
                 autoCapitalize="none"

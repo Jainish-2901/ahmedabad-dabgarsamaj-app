@@ -52,6 +52,7 @@ export interface FamilyMember {
   photo_url: string | null;
   gender: Gender;
   mobile: string | null;
+  email?: string | null;
   dob: string; // YYYY-MM-DD (DOB is source of truth; age calculated dynamically)
   relation: string; // RelationshipCode (e.g. 'FAMILY_HEAD', 'FATHER', 'BROTHER_WIFE')
   residence_type: ResidenceType;

@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.family_members (
     photo_url TEXT,
     gender TEXT NOT NULL,
     mobile TEXT,
+    email TEXT,
     dob DATE NOT NULL,
     relation TEXT NOT NULL,
     residence_type TEXT NOT NULL DEFAULT 'SAME_AS_FAMILY',

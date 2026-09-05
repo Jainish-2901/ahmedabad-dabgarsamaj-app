@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +23,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { TopBar } from '@/components/navigation/TopBar';
@@ -127,36 +131,70 @@ export default function MemberDetailScreen() {
     loadData();
   }, [id]);
 
-  const handleTogglePermission = async () => {
-    if (!member) return;
-    const newStatus = !member.can_edit_family;
-    const actionText = newStatus ? 'પરવાનગી આપવી છે?' : 'પરવાનગી રદ કરવી છે?';
-    const detailText = newStatus
-      ? `શું તમે ${member.name} ને પરિવારની વિગતો અને સભ્યો ઉમેરવા/સુધારવાની પરવાનગી આપવા માંગો છો?`
-      : `શું તમે ${member.name} ની પરિવાર એડિટ કરવાની પરવાનગી પાછી ખેંચવા માંગો છો?`;
+  const [permissionModalVisible, setPermissionModalVisible] = useState(false);
+  const [permissionEmail, setPermissionEmail] = useState('');
+  const [permissionEmailError, setPermissionEmailError] = useState('');
 
-    Alert.alert('Edit Permission / એડિટ પરવાનગી', `${actionText}\n\n${detailText}`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: newStatus ? 'હા, પરવાનગી આપો' : 'હા, રદ કરો',
-        onPress: async () => {
-          setTogglingPermission(true);
-          const res = await membersService.toggleEditPermission(member.id, newStatus);
-          setTogglingPermission(false);
-          if (res.error) {
-            Alert.alert('Error', res.error);
-          } else {
-            setMember({ ...member, can_edit_family: newStatus });
-            Alert.alert(
-              'Updated / અપડેટ થયું',
-              newStatus
-                ? `${member.name} ને હવે પરિવાર એડિટ કરવાની પરવાનગી સફળતાપૂર્વક આપવામાં આવી છે.`
-                : `${member.name} ની એડિટ પરવાનગી રદ કરવામાં આવી છે.`
-            );
-          }
+  const openPermissionModal = () => {
+    if (!member) return;
+    const currentEmail = member.email || (member.occupation_details as any)?.email || '';
+    setPermissionEmail(currentEmail);
+    setPermissionEmailError('');
+    setPermissionModalVisible(true);
+  };
+
+  const handleGrantPermission = async () => {
+    if (!member) return;
+    const cleanEmail = permissionEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      setPermissionEmailError('કૃપા કરીને સભ્યનો ઈમેઈલ આઈડી દાખલ કરો.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setPermissionEmailError('કૃપા કરીને સાચો ઈમેઈલ એડ્રેસ દાખલ કરો (e.g. name@gmail.com).');
+      return;
+    }
+
+    setTogglingPermission(true);
+    const res = await membersService.toggleEditPermission(member.id, true, cleanEmail);
+    setTogglingPermission(false);
+
+    if (res.error) {
+      Alert.alert('Error', res.error);
+    } else {
+      setMember({ ...member, can_edit_family: true, email: cleanEmail });
+      setPermissionModalVisible(false);
+      Alert.alert(
+        'પરવાનગી અપડેટ થઈ / Permission Granted',
+        `${member.name} ને પરિવાર એડિટ કરવાની પરવાનગી સફળતાપૂર્વક આપવામાં આવી છે.\n\nભવિષ્યમાં પાસવર્ડ રીસેટ કરવા માટેનો OTP તેમના ઈમેઈલ (${cleanEmail}) પર મોકલવામાં આવશે.`
+      );
+    }
+  };
+
+  const handleRevokePermission = () => {
+    if (!member) return;
+    Alert.alert(
+      'Revoke Permission / પરવાનગી રદ કરો',
+      `શું તમે ${member.name} ની પરિવાર એડિટ કરવાની પરવાનગી પાછી ખેંચવા માંગો છો?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'હા, રદ કરો',
+          style: 'destructive',
+          onPress: async () => {
+            setTogglingPermission(true);
+            const res = await membersService.toggleEditPermission(member.id, false, member.email);
+            setTogglingPermission(false);
+            if (res.error) {
+              Alert.alert('Error', res.error);
+            } else {
+              setMember({ ...member, can_edit_family: false });
+              Alert.alert('Updated / અપડેટ થયું', `${member.name} ની એડિટ પરવાનગી રદ કરવામાં આવી છે.`);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleDelete = () => {
@@ -334,17 +372,49 @@ export default function MemberDetailScreen() {
               </View>
             </View>
 
-            <Button
-              title={
-                member.can_edit_family
-                  ? 'પરવાનગી રદ કરો / Revoke Permission'
-                  : 'પરવાનગી આપો / Grant Edit Access'
-              }
-              variant={member.can_edit_family ? 'outline' : 'primary'}
-              loading={togglingPermission}
-              onPress={handleTogglePermission}
-              style={{ marginTop: 12 }}
-            />
+            {member.can_edit_family ? (
+              <View style={[styles.authorizedEmailBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="mail" size={16} color="#15803D" style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#15803D' }}>
+                    ઓથોરાઇઝ્ડ ઈમેઈલ (Authorized Email):
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#166534', marginTop: 3 }}>
+                  {member.email || (member.occupation_details as any)?.email || 'ઈમેઈલ દાખલ કરેલ નથી'}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#15803D', marginTop: 4 }}>
+                  પાસવર્ડ રીસેટ કરવા માટેનો ૬ આંકડાનો OTP આ ઈમેઈલ પર મોકલવામાં આવશે.
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={{ marginTop: 12 }}>
+              {member.can_edit_family ? (
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Button
+                    title="ઈમેઈલ બદલો / Edit Email"
+                    variant="outline"
+                    onPress={openPermissionModal}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    title="પરવાનગી રદ કરો"
+                    variant="danger"
+                    loading={togglingPermission}
+                    onPress={handleRevokePermission}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              ) : (
+                <Button
+                  title="પરવાનગી આપો / Grant Edit Access"
+                  variant="primary"
+                  loading={togglingPermission}
+                  onPress={openPermissionModal}
+                />
+              )}
+            </View>
           </Card>
         ) : null}
 
@@ -643,6 +713,73 @@ export default function MemberDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Modal for setting member email when granting edit access */}
+      <Modal
+        visible={permissionModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPermissionModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalContainer}
+          >
+            <View style={[styles.modalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.modalHeader}>
+                <View style={[styles.modalIconCircle, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="shield-checkmark" size={28} color="#10B981" />
+                </View>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {member?.can_edit_family ? 'ઓથોરાઇઝ્ડ ઈમેઈલ અપડેટ કરો' : 'એડિટ પરવાનગી આપો'}
+                </Text>
+                <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
+                  {member?.name} પરિવારની વિગતો સુધારી શકશે
+                </Text>
+              </View>
+
+              <View style={[styles.modalNoticeBox, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+                <Ionicons name="information-circle" size={18} color="#1D4ED8" style={{ marginRight: 6 }} />
+                <Text style={[styles.modalNoticeText, { color: '#1E40AF' }]}>
+                  સભ્યનો ઈમેઈલ આઈડી દાખલ કરો જેથી ભવિષ્યમાં પાસવર્ડ રીસેટ કરતી વખતે OTP સીધો આ ઈમેઈલ પર મેળવી શકાય.
+                </Text>
+              </View>
+
+              <View style={{ marginTop: 16 }}>
+                <Input
+                  label="સભ્યનો Email ID (Member Email)"
+                  placeholder="e.g. member@gmail.com"
+                  value={permissionEmail}
+                  onChangeText={(text) => {
+                    setPermissionEmail(text);
+                    if (permissionEmailError) setPermissionEmailError('');
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  error={permissionEmailError}
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <Button
+                  title="રદ કરો / Cancel"
+                  variant="outline"
+                  onPress={() => setPermissionModalVisible(false)}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  title={member?.can_edit_family ? 'સાચવો / Save' : 'પરવાનગી આપો'}
+                  variant="primary"
+                  loading={togglingPermission}
+                  onPress={handleGrantPermission}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -747,5 +884,72 @@ const styles = StyleSheet.create({
   permissionSubtitle: {
     fontSize: 12,
     lineHeight: 16,
+  },
+  authorizedEmailBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 440,
+  },
+  modalCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  modalIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  modalNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  modalNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
   },
 });

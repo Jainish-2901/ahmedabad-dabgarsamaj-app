@@ -111,6 +111,32 @@ export const familyService = {
                 familyData = famById;
               }
             }
+
+            // Check member link via profile email or session user email
+            if (!familyData) {
+              let userEmail = userProfile?.email;
+              if (!userEmail) {
+                const { data: authUser } = await supabase.auth.getUser();
+                userEmail = authUser?.user?.email;
+              }
+              if (userEmail) {
+                const { data: memberByEmail } = await supabase
+                  .from('family_members')
+                  .select('family_id')
+                  .ilike('email', userEmail.trim())
+                  .maybeSingle();
+
+                if (memberByEmail?.family_id) {
+                  const { data: famById } = await supabase
+                    .from('families')
+                    .select('*, area:areas(*)')
+                    .eq('id', memberByEmail.family_id)
+                    .eq('status', 'ACTIVE')
+                    .maybeSingle();
+                  familyData = famById;
+                }
+              }
+            }
           }
 
           // 3. Fallback: If this user created or belongs to the community's active family record
@@ -142,8 +168,10 @@ export const familyService = {
                 const isDeceased = m.is_deceased === true || m.status === 'DECEASED' || m.occupation_details?.is_deceased === true;
                 const deceasedDate = m.deceased_date || m.occupation_details?.deceased_date || null;
                 const canEdit = m.can_edit_family === true || m.occupation_details?.can_edit_family === true || m.relation === 'FAMILY_HEAD';
+                const memberEmail = m.email || m.occupation_details?.email || null;
                 return {
                   ...m,
+                  email: memberEmail,
                   can_edit_family: canEdit,
                   blood_group: m.blood_group || m.occupation_details?.blood_group || null,
                   birth_place: m.birth_place || m.occupation_details?.birth_place || null,
@@ -238,8 +266,10 @@ export const familyService = {
               const isDeceased = m.is_deceased === true || m.status === 'DECEASED' || m.occupation_details?.is_deceased === true;
               const deceasedDate = m.deceased_date || m.occupation_details?.deceased_date || null;
               const canEdit = m.can_edit_family === true || m.occupation_details?.can_edit_family === true || m.relation === 'FAMILY_HEAD';
+              const memberEmail = m.email || m.occupation_details?.email || null;
               return {
                 ...m,
+                email: memberEmail,
                 can_edit_family: canEdit,
                 blood_group: m.blood_group || m.occupation_details?.blood_group || null,
                 birth_place: m.birth_place || m.occupation_details?.birth_place || null,
