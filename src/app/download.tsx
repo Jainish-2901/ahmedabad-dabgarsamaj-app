@@ -261,16 +261,11 @@ export default function DownloadAppScreen() {
           </View>
         </Card>
 
-        {/* Support Section */}
+        {/* Footer Note */}
         <View style={styles.helpBox}>
-          <Text style={[styles.helpText, { color: theme.textSecondary }]}>
-            ડાઉનલોડ કરવામાં કોઈ મુશ્કેલી પડે તો સંપર્ક કરો:
+          <Text style={[styles.helpText, { color: theme.textMuted }]}>
+            © 2026 શ્રી અમદાવાદ ડબગર સમાજ. સર્વ અધિકાર સુરક્ષિત.
           </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://wa.me/919773272749')}>
-            <Text style={[styles.helpLink, { color: theme.primary }]}>
-              💬 WhatsApp સહાય: +91 97732 72749
-            </Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
 

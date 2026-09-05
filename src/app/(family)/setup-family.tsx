@@ -13,7 +13,6 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useTheme } from '@/constants/theme';
 import { familyService } from '@/features/family/familyService';
-import { Area } from '@/types/database';
 import { calculateAge, formatDate, isValidDOB } from '@/lib/utils/date';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -35,8 +34,6 @@ export default function SetupFamilyScreen() {
   const [dob, setDob] = useState(''); // YYYY-MM-DD
   const [mobile, setMobile] = useState('');
   const [address, setAddress] = useState('');
-  const [areaId, setAreaId] = useState<string>('');
-  const [customAreaName, setCustomAreaName] = useState('');
   const [city, setCity] = useState('Ahmedabad');
   const [state, setState] = useState('Gujarat');
   const [pincode, setPincode] = useState('');
@@ -44,18 +41,10 @@ export default function SetupFamilyScreen() {
   const [birthPlace, setBirthPlace] = useState<string>('');
   const [occupationType, setOccupationType] = useState('BUSINESS_OWNER');
 
-  const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    familyService.getAreas().then((res) => {
-      setAreas(res.data);
-      if (res.data.length > 0) {
-        setAreaId(res.data[0].id);
-      }
-    });
-
     // Auto-fill mobile number from signup / user profile
     const userPhone = profile?.phone || user?.phone || (user?.user_metadata?.phone as string) || '';
     if (userPhone && !mobile) {
@@ -67,11 +56,6 @@ export default function SetupFamilyScreen() {
     setErrorMessage('');
     if (!name.trim() || !dob.trim() || !mobile.trim() || !address.trim() || !pincode.trim()) {
       setErrorMessage('Please fill in all mandatory fields marked with *');
-      return;
-    }
-
-    if (areaId === 'other' && !customAreaName.trim()) {
-      setErrorMessage('Please write your area name in the text box.');
       return;
     }
 
@@ -101,8 +85,8 @@ export default function SetupFamilyScreen() {
       photo_url: finalPhotoUrl,
       dob: formatDate(dob.trim()),
       mobile: mobile.trim(),
-      address: areaId === 'other' && customAreaName.trim() ? `${address.trim()} (${customAreaName.trim()})` : address.trim(),
-      area_id: areaId !== 'other' ? areaId : null,
+      address: address.trim(),
+      area_id: null,
       city: city.trim(),
       state: state.trim(),
       pincode: pincode.trim(),
@@ -338,52 +322,6 @@ export default function SetupFamilyScreen() {
             multiline
             numberOfLines={2}
           />
-
-          {areas.length > 0 ? (
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>
-                Select Area / વિસ્તાર *
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalPills}>
-                {areas.map((a) => (
-                  <TouchableOpacity
-                    key={a.id}
-                    activeOpacity={0.7}
-                    onPress={() => setAreaId(a.id)}
-                    style={[
-                      styles.pillButton,
-                      {
-                        backgroundColor:
-                          areaId === a.id ? theme.primary : theme.backgroundElement,
-                        borderColor:
-                          areaId === a.id ? theme.primary : theme.border,
-                        marginRight: 8,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.pillText,
-                        { color: areaId === a.id ? '#FFFFFF' : theme.text },
-                      ]}
-                    >
-                      {a.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {areaId === 'other' ? (
-                <Input
-                  label="Enter Custom Area Name / વિસ્તારનું નામ લખો *"
-                  placeholder="e.g. Isanpur / Chandlodia / Village name"
-                  value={customAreaName}
-                  onChangeText={setCustomAreaName}
-                  style={{ marginTop: 10 }}
-                />
-              ) : null}
-            </View>
-          ) : null}
 
           <View style={styles.rowTwo}>
             <View style={{ flex: 1, marginRight: 8 }}>

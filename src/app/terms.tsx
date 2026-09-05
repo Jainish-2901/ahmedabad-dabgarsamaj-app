@@ -43,7 +43,7 @@ export default function TermsAndConditionsScreen() {
             નિયમો અને શરતો (Terms & Conditions)
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • માન્યતા: ૨૦૨૬
+            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • છેલ્લે અપડેટ: ૦૫ સપ્ટેમ્બર ૨૦૨૬ (Last Updated: 05 September 2026)
           </Text>
         </Card>
 

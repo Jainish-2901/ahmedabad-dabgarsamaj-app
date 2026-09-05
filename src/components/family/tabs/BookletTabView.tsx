@@ -15,8 +15,6 @@ import {
   CommunityStats,
   directoryService,
 } from '@/features/directory/directoryService';
-import { familyService } from '@/features/family/familyService';
-import { Area } from '@/types/database';
 import { BookletCard } from '@/components/booklet/BookletCard';
 import { FamilyBookletDetailModal } from '@/components/booklet/FamilyBookletDetailModal';
 import { Card } from '@/components/ui/Card';
@@ -28,9 +26,7 @@ export function BookletTabView() {
   const theme = useTheme();
 
   const [families, setFamilies] = useState<CommunityFamilyBookletItem[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
   const [stats, setStats] = useState<CommunityStats | null>(null);
-  const [selectedAreaId, setSelectedAreaId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -65,17 +61,14 @@ export function BookletTabView() {
     );
   };
 
-  const loadData = async (query = searchQuery, areaId = selectedAreaId) => {
-    const [areaRes, famRes, statsRes] = await Promise.all([
-      familyService.getAreas(),
+  const loadData = async (query = searchQuery) => {
+    const [famRes, statsRes] = await Promise.all([
       directoryService.getAllCommunityFamilies({
         searchQuery: query,
-        areaId,
       }),
       directoryService.getCommunityStats(),
     ]);
 
-    setAreas(areaRes.data);
     setFamilies(famRes.data);
     setStats(statsRes);
     setLoading(false);
@@ -88,12 +81,7 @@ export function BookletTabView() {
 
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
-    loadData(text, selectedAreaId);
-  };
-
-  const handleAreaSelect = (areaId: string) => {
-    setSelectedAreaId(areaId);
-    loadData(searchQuery, areaId);
+    loadData(text);
   };
 
   const onRefresh = () => {
@@ -103,76 +91,23 @@ export function BookletTabView() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Search & Area Filter Header */}
+      {/* Header Search Bar */}
       <View style={[styles.filterSection, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        {/* Search Bar */}
-        <View style={[styles.searchBar, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-          <Ionicons name="search" size={18} color={theme.textSecondary} />
+        <View style={[styles.searchBar, { backgroundColor: theme.backgroundElement, borderColor: theme.border, marginBottom: 4 }]}>
+          <Ionicons name="search" size={18} color={theme.textSecondary} style={{ marginRight: 4 }} />
           <TextInput
-            placeholder="Search by Name, Blood Group, Village, Job, Edu..."
-            placeholderTextColor={theme.textSecondary}
+            placeholder="નામ, ફોન, બ્લડ ગ્રૂપ, ગામ કે વ્યવસાયથી શોધો..."
+            placeholderTextColor={theme.textMuted}
             value={searchQuery}
             onChangeText={handleSearchChange}
             style={[styles.searchInput, { color: theme.text }]}
           />
-          {searchQuery ? (
+          {searchQuery.length > 0 ? (
             <TouchableOpacity onPress={() => handleSearchChange('')}>
               <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
             </TouchableOpacity>
           ) : null}
         </View>
-
-        {/* Horizontal Area Scroll Filter */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.areaScrollContent}
-        >
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => handleAreaSelect('all')}
-            style={[
-              styles.areaPill,
-              {
-                backgroundColor: selectedAreaId === 'all' ? theme.primary : theme.backgroundElement,
-                borderColor: selectedAreaId === 'all' ? theme.primary : theme.border,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.areaPillText,
-                { color: selectedAreaId === 'all' ? '#FFFFFF' : theme.text },
-              ]}
-            >
-              All Areas / તમામ વિસ્તારો
-            </Text>
-          </TouchableOpacity>
-
-          {areas.map((a) => (
-            <TouchableOpacity
-              key={a.id}
-              activeOpacity={0.7}
-              onPress={() => handleAreaSelect(a.id)}
-              style={[
-                styles.areaPill,
-                {
-                  backgroundColor: selectedAreaId === a.id ? theme.primary : theme.backgroundElement,
-                  borderColor: selectedAreaId === a.id ? theme.primary : theme.border,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.areaPillText,
-                  { color: selectedAreaId === a.id ? '#FFFFFF' : theme.text },
-                ]}
-              >
-                {a.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
       </View>
 
       {/* Loading Skeleton or Directory Booklet FlatList */}

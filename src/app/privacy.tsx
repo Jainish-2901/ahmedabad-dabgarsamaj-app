@@ -4,36 +4,16 @@ import { useTheme } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
-  Linking,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
   const theme = useTheme();
-
-  const handleCall = () => {
-    Linking.openURL('tel:+919773272749').catch(() => {});
-  };
-
-  const handleWhatsApp = () => {
-    const url = `https://wa.me/919773272749?text=${encodeURIComponent(
-      'નમસ્તે, અમદાવાદ ડબગર સમાજ એપની પ્રાઇવસી પોલિસી / ડેટા સંબંધિત પૂછપરછ માટે સંપર્ક કર્યો છે.'
-    )}`;
-    Linking.openURL(url).catch(() => {});
-  };
-
-  const handleEmail = () => {
-    Linking.openURL(
-      `mailto:jainishdabgar2901@gmail.com?subject=${encodeURIComponent(
-        'અમદાવાદ ડબગર સમાજ એપ - પ્રાઇવસી પોલિસી / ડેટા પૂછપરછ'
-      )}`
-    ).catch(() => {});
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -61,7 +41,7 @@ export default function PrivacyPolicyScreen() {
             ગોપનીયતા નીતિ (Privacy Policy)
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • છેલ્લે અપડેટ: માર્ચ ૨૦૨૬
+            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • છેલ્લે અપડેટ: ૦૫ સપ્ટેમ્બર ૨૦૨૬ (Last Updated: 05 September 2026)
           </Text>
         </Card>
 
@@ -140,79 +120,17 @@ export default function PrivacyPolicyScreen() {
           </Text>
         </Card>
 
-        {/* Contact Section */}
+        {/* Section 5 */}
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
-            <Ionicons name="mail-unread" size={20} color={theme.primary} />
+            <Ionicons name="shield" size={20} color={theme.primary} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              ૫. સંપર્ક સૂત્ર (Contact Us)
+              ૫. નીતિમાં સુધારા (Policy Updates)
             </Text>
           </View>
           <Text style={[styles.paragraph, { color: theme.textSecondary }]}>
-            આ ગોપનીયતા નીતિ સંબંધિત કોઈ પ્રશ્ન, ડેટા સુધારો કે સૂચન હોય તો આપ નીચે આપેલા માધ્યમો દ્વારા સીધો સંપર્ક કરી શકો છો:
+            સમાજ સમિતિ દ્વારા જરૂરિયાત મુજબ આ ગોપનીયતા નીતિમાં સુધારો કરવાનો અધિકાર ધરાવે છે. કોઈપણ નીતિગત ફેરફાર એપ્લિકેશન તથા વેબસાઇટ મારફતે જાહેર કરવામાં આવશે.
           </Text>
-
-          <View style={styles.contactActionsList}>
-            {/* Phone Call */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleCall}
-              style={[styles.contactActionItem, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-            >
-              <View style={[styles.contactActionIcon, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="call" size={18} color="#10B981" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.contactActionTitle, { color: theme.text }]}>
-                  +91 97732 72749
-                </Text>
-                <Text style={[styles.contactActionSub, { color: theme.textSecondary }]}>
-                  સીધો ફોન કરો • Direct Phone Call
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-            </TouchableOpacity>
-
-            {/* WhatsApp */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleWhatsApp}
-              style={[styles.contactActionItem, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-            >
-              <View style={[styles.contactActionIcon, { backgroundColor: '#DCFCE7' }]}>
-                <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.contactActionTitle, { color: theme.text }]}>
-                  WhatsApp ચેટ (Chat)
-                </Text>
-                <Text style={[styles.contactActionSub, { color: theme.textSecondary }]}>
-                  વોટ્સએપ પર સીધો મેસેજ કરો
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-            </TouchableOpacity>
-
-            {/* Email */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleEmail}
-              style={[styles.contactActionItem, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-            >
-              <View style={[styles.contactActionIcon, { backgroundColor: '#FEE2E2' }]}>
-                <Ionicons name="mail" size={18} color="#DC2626" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.contactActionTitle, { color: theme.text }]}>
-                  jainishdabgar2901@gmail.com
-                </Text>
-                <Text style={[styles.contactActionSub, { color: theme.textSecondary }]}>
-                  ઈમેલ મોકલો • Send Email
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-            </TouchableOpacity>
-          </View>
         </Card>
 
         <View style={styles.footerNote}>
@@ -220,6 +138,7 @@ export default function PrivacyPolicyScreen() {
             © 2026 શ્રી અમદાવાદ ડબગર સમાજ. સર્વ અધિકાર સુરક્ષિત.
           </Text>
         </View>
+
       </ScrollView>
     </View>
   );

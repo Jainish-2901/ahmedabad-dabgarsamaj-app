@@ -15,7 +15,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useTheme } from '@/constants/theme';
 import { familyService } from '@/features/family/familyService';
 import { membersService } from '@/features/members/membersService';
-import { Area, Family, FamilyMember } from '@/types/database';
+import { Family, FamilyMember } from '@/types/database';
 import { calculateAge, formatDate, isValidDOB } from '@/lib/utils/date';
 import { PhotoUploadField } from '@/components/ui/PhotoUploadField';
 import { imageService } from '@/lib/storage/imageService';
@@ -37,7 +37,6 @@ export default function HeadProfileScreen() {
 
   const [family, setFamily] = useState<Family | null>(null);
   const [headMember, setHeadMember] = useState<FamilyMember | null>(null);
-  const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -65,20 +64,14 @@ export default function HeadProfileScreen() {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
-  const [areaId, setAreaId] = useState('');
-  const [customAreaName, setCustomAreaName] = useState('');
 
   const loadData = async () => {
-    const areaRes = await familyService.getAreas();
-    setAreas(areaRes.data);
-
     const famRes = await familyService.getMyFamily();
     if (famRes.family) {
       setFamily(famRes.family);
       setAddress(famRes.family.address);
       setCity(famRes.family.city);
       setPincode(famRes.family.pincode);
-      setAreaId(famRes.family.area_id || (areaRes.data[0]?.id || ''));
 
       const head = famRes.members.find((m) => m.relation === 'FAMILY_HEAD') || famRes.members[0];
       if (head) {
@@ -134,10 +127,10 @@ export default function HeadProfileScreen() {
 
     // Update Family Residence
     await familyService.updateFamily(family.id, {
-      address: areaId === 'other' && customAreaName.trim() ? `${address.trim()} (${customAreaName.trim()})` : address.trim(),
+      address: address.trim(),
       city: city.trim(),
       pincode: pincode.trim(),
-      area_id: areaId !== 'other' ? areaId : null,
+      area_id: null,
     });
 
     setSaving(false);
@@ -229,8 +222,6 @@ export default function HeadProfileScreen() {
   if (loading) {
     return <LoadingState message="Loading your profile..." />;
   }
-
-  const selectedArea = areas.find((a) => a.id === areaId);
 
   return (
     <KeyboardAvoidingView
@@ -377,40 +368,6 @@ export default function HeadProfileScreen() {
                 multiline
               />
 
-              {/* Area Selection */}
-              <View style={styles.fieldGroup}>
-                <Text style={[styles.fieldLabel, { color: theme.text }]}>Area / વિસ્તાર</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
-                  {areas.map((a) => (
-                    <TouchableOpacity
-                      key={a.id}
-                      onPress={() => setAreaId(a.id)}
-                      style={[
-                        styles.areaPill,
-                        {
-                          backgroundColor: areaId === a.id ? theme.primary : theme.backgroundElement,
-                          borderColor: areaId === a.id ? theme.primary : theme.border,
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.areaPillText, { color: areaId === a.id ? '#FFFFFF' : theme.text }]}>
-                        {a.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                {areaId === 'other' ? (
-                  <Input
-                    label="Enter Custom Area Name / વિસ્તારનું નામ લખો *"
-                    placeholder="e.g. Isanpur / Chandlodia / Village name"
-                    value={customAreaName}
-                    onChangeText={setCustomAreaName}
-                    style={{ marginTop: 10 }}
-                  />
-                ) : null}
-              </View>
-
               <View style={styles.rowTwo}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Input label="City" value={city} onChangeText={setCity} />
@@ -464,9 +421,9 @@ export default function HeadProfileScreen() {
               </View>
 
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Area / City:</Text>
+                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>City / Pincode:</Text>
                 <Text style={[styles.infoVal, { color: theme.text }]}>
-                  {selectedArea?.name || family?.city} - {family?.pincode}
+                  {family?.city || 'Ahmedabad'} - {family?.pincode}
                 </Text>
               </View>
             </View>
