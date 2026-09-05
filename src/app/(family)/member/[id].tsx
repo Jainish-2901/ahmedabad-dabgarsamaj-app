@@ -162,7 +162,7 @@ export default function MemberDetailScreen() {
       setPermissionModalVisible(false);
       Alert.alert(
         'પરવાનગી અપડેટ થઈ / Permission Granted',
-        `${member.name} ને પરિવાર એડિટ કરવાની પરવાનગી સફળતાપૂર્વક આપવામાં આવી છે.\n\nભવિષ્યમાં પાસવર્ડ રીસેટ કરવા માટેનો OTP તેમના ઈમેઈલ (${cleanEmail}) પર મોકલવામાં આવશે.`
+        `${member.name} ને પરિવાર એડિટ કરવાની પરવાનગી સફળતાપૂર્વક આપવામાં આવી છે.\n\nતેઓ તેમના મોબાઈલ નંબર અથવા ઈમેઈલ (${cleanEmail}) અને તમારા પરિવારના મૂળ પાસવર્ડ વડે પણ સીધા જ એપમાં લૉગિન કરી શકશે.`
       );
     }
   };

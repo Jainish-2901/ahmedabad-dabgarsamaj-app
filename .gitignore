@@ -43,3 +43,8 @@ example
 # generated native folders
 /ios
 /android
+
+# exports & generated files
+exports/
+*.xlsx
+public/*.xlsx

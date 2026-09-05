@@ -1,4 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { PasswordStrengthIndicator } from '@/components/ui/PasswordStrengthIndicator';
+import { useTheme } from '@/constants/theme';
+import { useAuth } from '@/features/auth/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -8,14 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@/features/auth/AuthContext';
-import { useTheme } from '@/constants/theme';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { PasswordStrengthIndicator } from '@/components/ui/PasswordStrengthIndicator';
-import { Ionicons } from '@expo/vector-icons';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -77,7 +77,7 @@ export default function ForgotPasswordScreen() {
       setResolvedEmail(email);
       setStep(2);
       setCooldown(60); // 60 seconds cooldown
-      setOtpSentNotice(`આપના રજીસ્ટર્ડ ઈમેઈલ (${maskEmail(email)}) પર ૬ આંકડાનો OTP મોકલવામાં આવ્યો છે.`);
+      setOtpSentNotice(`આપના રજીસ્ટર્ડ ઈમેઈલ (${maskEmail(email)}) પર OTP મોકલવામાં આવ્યો છે.`);
     }
   };
 
@@ -86,7 +86,7 @@ export default function ForgotPasswordScreen() {
     setErrorMessage('');
 
     if (!otp.trim() || otp.trim().length < 6) {
-      setErrorMessage('કૃપા કરીને આપના ઈમેઈલ પર આવેલ ૬ આંકડાનો OTP દાખલ કરો.');
+      setErrorMessage('કૃપા કરીને આપના ઈમેઈલ પર આવેલ OTP દાખલ કરો.');
       return;
     }
 
@@ -175,7 +175,7 @@ export default function ForgotPasswordScreen() {
 
               <Input
                 label="Email or Mobile Number / ઈમેઈલ અથવા મોબાઈલ નંબર *"
-                placeholder="e.g. 9824970902 or member@gmail.com"
+                placeholder="e.g. 9876543210 or member@gmail.com"
                 value={identifier}
                 onChangeText={setIdentifier}
                 autoCapitalize="none"
@@ -189,6 +189,26 @@ export default function ForgotPasswordScreen() {
                 size="lg"
                 style={styles.actionButton}
               />
+
+              <View
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  borderRadius: 8,
+                  backgroundColor: theme.backgroundElement,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  flexDirection: 'row',
+                  gap: 8,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <Ionicons name="information-circle-outline" size={18} color={theme.primary} style={{ marginTop: 2 }} />
+                <Text style={{ fontSize: 12, color: theme.textSecondary, flex: 1, lineHeight: 18 }}>
+                  <Text style={{ fontWeight: '700', color: theme.text }}>💡 ઉપયોગી માહિતી:{'\n'}</Text>
+                  જો આપ પરિવારના સભ્ય છો અને વડા દ્વારા એડિટ પરવાનગી આપવામાં આવી છે, તો આપ પરિવારના મૂળ (Head) પાસવર્ડ વડે પણ આપના મોબાઈલ નંબર અથવા ઈમેઈલથી સીધા જ લૉગિન કરી શકો છો.
+                </Text>
+              </View>
             </>
           ) : (
             /* STEP 2: Enter OTP & New Password */
@@ -204,7 +224,7 @@ export default function ForgotPasswordScreen() {
 
               <View style={styles.stepHeaderRow}>
                 <Text style={[styles.instructions, { color: theme.textSecondary, marginBottom: 0, flex: 1 }]}>
-                  ઈમેઈલ પર આવેલ ૬ આંકડાનો OTP અને નવો પાસવર્ડ દાખલ કરો:
+                  ઈમેઈલ પર આવેલ OTP અને નવો પાસવર્ડ દાખલ કરો:
                 </Text>
                 <TouchableOpacity
                   onPress={() => {
@@ -223,12 +243,13 @@ export default function ForgotPasswordScreen() {
               </View>
 
               <Input
-                label="Enter 6-Digit OTP / ૬ આંકડાનો OTP *"
-                placeholder="e.g. 123456"
+                label="Enter OTP / ઈમેઈલ પર આવેલ OTP *"
+                placeholder="e.g. 12345678"
                 value={otp}
                 onChangeText={setOtp}
-                keyboardType="number-pad"
-                maxLength={6}
+                keyboardType="default"
+                maxLength={12}
+                autoCapitalize="none"
                 leftIcon={<Ionicons name="key-outline" size={18} color={theme.textSecondary} />}
               />
 

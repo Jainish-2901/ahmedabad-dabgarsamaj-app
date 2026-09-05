@@ -2,7 +2,6 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { EducationRecord, FamilyMember, OccupationRecord } from '@/types/database';
 import { calculateAge, formatDate, formatDateForDB } from '@/lib/utils/date';
 import { getRelationshipDisplay } from '@/constants/relationships';
-import { localAppStore, persistAppStore, restoreAppStore } from '@/features/family/familyStore';
 
 export interface AddMemberInput {
   family_id: string;
@@ -135,35 +134,6 @@ export const membersService = {
     };
 
     if (!isSupabaseConfigured) {
-      localAppStore.members.push(newMember);
-
-      if (input.education_level && input.course_or_standard) {
-        localAppStore.educations.push({
-          id: 'edu-' + Date.now(),
-          family_member_id: newMemberId,
-          education_level: input.education_level,
-          course_or_standard: input.course_or_standard,
-          education_status: input.education_status || 'Studying',
-          passing_year: input.passing_year || null,
-          current_year: input.current_year || null,
-          institution: input.institution?.trim() || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-      }
-
-      if (input.occupation_type) {
-        localAppStore.occupations.push({
-          id: 'occ-' + Date.now(),
-          family_member_id: newMemberId,
-          occupation_type: input.occupation_type,
-          details: occDetails,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-      }
-
-      await persistAppStore();
       return { member: newMember };
     }
 
@@ -174,19 +144,23 @@ export const membersService = {
         gender: input.gender,
         dob: formatDateForDB(input.dob),
         relation: input.relation,
-        mobile: input.mobile?.trim() || null,
+        mobile: input.mobile ? input.mobile.trim() : null,
         photo_url: input.photo_url || null,
         residence_type: input.residence_type,
-        separate_address: input.residence_type === 'SEPARATE' ? input.separate_address?.trim() || null : null,
-        separate_area_id: input.residence_type === 'SEPARATE' ? input.separate_area_id || null : null,
-        separate_city: input.residence_type === 'SEPARATE' ? input.separate_city?.trim() || 'Ahmedabad' : null,
-        separate_state: input.residence_type === 'SEPARATE' ? input.separate_state?.trim() || 'Gujarat' : null,
-        separate_pincode: input.residence_type === 'SEPARATE' ? input.separate_pincode?.trim() || null : null,
+        address: input.residence_type === 'SEPARATE' ? input.separate_address || null : null,
+        area_id: input.residence_type === 'SEPARATE' ? input.separate_area_id || null : null,
+        city: input.residence_type === 'SEPARATE' ? input.separate_city || 'Ahmedabad' : null,
+        state: input.residence_type === 'SEPARATE' ? input.separate_state || 'Gujarat' : null,
+        pincode: input.residence_type === 'SEPARATE' ? input.separate_pincode || null : null,
         education_status: input.education_status || null,
         occupation_type: input.occupation_type || null,
-        occupation_details: occDetails,
         blood_group: input.blood_group || null,
         birth_place: input.birth_place || null,
+        email: input.email || null,
+        can_edit_family: input.can_edit_family || false,
+        occupation_details: occDetails,
+        is_deceased: isDeceased,
+        deceased_date: input.deceased_date || null,
         status: 'ACTIVE',
       };
 
@@ -196,6 +170,7 @@ export const membersService = {
         .select()
         .single();
 
+      // Graceful fallback if database schema does not have blood_group/birth_place columns yet
       if (memberError && (memberError.message?.includes('blood_group') || memberError.message?.includes('birth_place') || memberError.code === 'PGRST204')) {
         delete insertPayload.blood_group;
         delete insertPayload.birth_place;
@@ -280,18 +255,6 @@ export const membersService = {
         display_relation: getRelationshipDisplay(memberData.relation),
       };
 
-      // Update local store with real Supabase member object
-      const existingIdx = localAppStore.members.findIndex((m) => m.id === memberObj.id);
-      if (existingIdx !== -1) {
-        localAppStore.members[existingIdx] = memberObj;
-      } else {
-        localAppStore.members.push(memberObj);
-      }
-      if (localAppStore.currentFamily) {
-        localAppStore.currentFamily.members_count = localAppStore.members.length;
-      }
-      await persistAppStore(localAppStore.ownerUserId || undefined);
-
       return {
         member: memberObj,
       };
@@ -302,7 +265,7 @@ export const membersService = {
   },
 
   /**
-   * Get member by ID
+   * Get member by ID directly from Supabase Cloud DB
    */
   async getMemberById(memberId: string): Promise<{
     member?: FamilyMember;
@@ -310,39 +273,8 @@ export const membersService = {
     occupation?: OccupationRecord | null;
     error?: string;
   }> {
-    const localMember = localAppStore.members.find((m) => m.id === memberId);
-    const localEdu = localAppStore.educations.find((e) => e.family_member_id === memberId);
-    const localOcc = localAppStore.occupations.find((o) => o.family_member_id === memberId);
-
-    if (localMember) {
-      const isDeceased =
-        localMember.is_deceased === true ||
-        (localMember as any).status === 'DECEASED' ||
-        (localMember.occupation_details as any)?.is_deceased === true;
-      const deceasedDate =
-        localMember.deceased_date ||
-        (localMember.occupation_details as any)?.deceased_date ||
-        null;
-      const bloodGroup = localMember.blood_group || (localMember.occupation_details as any)?.blood_group || null;
-      const birthPlace = localMember.birth_place || (localMember.occupation_details as any)?.birth_place || null;
-
-      return {
-        member: {
-          ...localMember,
-          blood_group: bloodGroup,
-          birth_place: birthPlace,
-          is_deceased: isDeceased,
-          deceased_date: deceasedDate,
-          age: calculateAge(localMember.dob),
-          display_relation: getRelationshipDisplay(localMember.relation),
-        },
-        education: localEdu || null,
-        occupation: localOcc || null,
-      };
-    }
-
     if (!isSupabaseConfigured) {
-      return { error: 'Member not found' };
+      return { error: 'Database is not configured' };
     }
 
     try {
@@ -425,72 +357,6 @@ export const membersService = {
       ...(bloodGroup !== undefined ? { blood_group: bloodGroup } : {}),
       ...(birthPlace !== undefined ? { birth_place: birthPlace } : {}),
     };
-
-    const idx = localAppStore.members.findIndex((m) => m.id === memberId);
-    if (idx >= 0) {
-      localAppStore.members[idx] = {
-        ...localAppStore.members[idx],
-        ...updates,
-        is_deceased: isDeceased,
-        deceased_date: updates.deceased_date !== undefined ? updates.deceased_date : localAppStore.members[idx].deceased_date,
-        blood_group: bloodGroup !== undefined ? bloodGroup : localAppStore.members[idx].blood_group,
-        birth_place: birthPlace !== undefined ? birthPlace : localAppStore.members[idx].birth_place,
-        status: 'ACTIVE',
-        education_status: educationUpdates?.education_status || updates.education_status || localAppStore.members[idx].education_status,
-        occupation_type: occupationUpdates?.occupation_type || updates.occupation_type || localAppStore.members[idx].occupation_type,
-        occupation_details: occDetails,
-        age: updates.dob ? calculateAge(updates.dob) : localAppStore.members[idx].age,
-        display_relation: updates.relation
-          ? getRelationshipDisplay(updates.relation)
-          : localAppStore.members[idx].display_relation,
-      };
-
-      // Sync Education Record
-      if (educationUpdates) {
-        const eduIdx = localAppStore.educations.findIndex((e) => e.family_member_id === memberId);
-        if (eduIdx >= 0) {
-          localAppStore.educations[eduIdx] = {
-            ...localAppStore.educations[eduIdx],
-            ...educationUpdates,
-          };
-        } else {
-          localAppStore.educations.push({
-            id: 'edu-' + Date.now(),
-            family_member_id: memberId,
-            education_level: educationUpdates.education_level || 'Other',
-            course_or_standard: educationUpdates.course_or_standard || 'General',
-            education_status: educationUpdates.education_status || 'Completed',
-            passing_year: educationUpdates.passing_year || null,
-            current_year: educationUpdates.current_year || null,
-            institution: educationUpdates.institution || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-        }
-      }
-
-      // Sync Occupation Record
-      if (occupationUpdates) {
-        const occIdx = localAppStore.occupations.findIndex((o) => o.family_member_id === memberId);
-        if (occIdx >= 0) {
-          localAppStore.occupations[occIdx] = {
-            ...localAppStore.occupations[occIdx],
-            ...occupationUpdates,
-          };
-        } else {
-          localAppStore.occupations.push({
-            id: 'occ-' + Date.now(),
-            family_member_id: memberId,
-            occupation_type: occupationUpdates.occupation_type || 'OTHER',
-            details: occupationUpdates.details || {},
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-        }
-      }
-
-      await persistAppStore();
-    }
 
     if (isSupabaseConfigured) {
       try {
@@ -594,16 +460,6 @@ export const membersService = {
    * Permanently delete member from DB (and all associated records) and local store
    */
   async deleteMember(memberId: string): Promise<{ error?: string }> {
-    // 1. Remove from local store
-    localAppStore.members = localAppStore.members.filter((m) => m.id !== memberId);
-    localAppStore.educations = localAppStore.educations.filter((e) => e.family_member_id !== memberId);
-    localAppStore.occupations = localAppStore.occupations.filter((o) => o.family_member_id !== memberId);
-    localAppStore.relationships = localAppStore.relationships.filter(
-      (r) => r.from_member_id !== memberId && r.to_member_id !== memberId
-    );
-    await persistAppStore();
-
-    // 2. Permanently delete from Supabase Cloud DB
     if (isSupabaseConfigured) {
       try {
         // Delete related child records explicitly first (in case cascading is not set up on older migrations)
@@ -640,27 +496,16 @@ export const membersService = {
   ): Promise<{ error?: string }> {
     const cleanEmail = email ? email.trim().toLowerCase() : null;
 
-    // 1. Update local store
-    const idx = localAppStore.members.findIndex((m) => m.id === memberId);
-    if (idx >= 0) {
-      localAppStore.members[idx].can_edit_family = canEdit;
-      if (!localAppStore.members[idx].occupation_details) {
-        localAppStore.members[idx].occupation_details = {};
-      }
-      localAppStore.members[idx].occupation_details.can_edit_family = canEdit;
-      if (email !== undefined) {
-        localAppStore.members[idx].email = cleanEmail;
-        localAppStore.members[idx].occupation_details.email = cleanEmail;
-      }
-      await persistAppStore();
-    }
-
-    // 2. Update Supabase Cloud DB
     if (isSupabaseConfigured) {
       try {
-        const member = localAppStore.members.find((m) => m.id === memberId);
+        const { data: member } = await supabase
+          .from('family_members')
+          .select('occupation_details')
+          .eq('id', memberId)
+          .maybeSingle();
+
         const occDetails = {
-          ...(member?.occupation_details || {}),
+          ...((member?.occupation_details as any) || {}),
           can_edit_family: canEdit,
           ...(email !== undefined ? { email: cleanEmail } : {}),
         };

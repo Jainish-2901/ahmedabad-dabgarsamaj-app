@@ -40,65 +40,32 @@ export function resetInMemoryStore(): void {
   localAppStore.occupations = [];
 }
 
-export async function persistAppStore(userId?: string | null): Promise<void> {
-  try {
-    const effectiveUserId = userId || localAppStore.ownerUserId || null;
-    localAppStore.ownerUserId = effectiveUserId;
-    const serialized = JSON.stringify(localAppStore);
-    await AppStorage.setItem(getAppStoreKey(effectiveUserId), serialized);
-  } catch (err) {
-    console.warn('Failed to persist localAppStore:', err);
-  }
+/**
+ * Direct DB Mode: Family data is never saved into device persistent storage.
+ * Supabase Cloud DB is the single source of truth.
+ */
+export async function persistAppStore(_userId?: string | null): Promise<void> {
+  // Direct DB mode: no local file/storage write
 }
 
-export async function restoreAppStore(userId?: string | null): Promise<void> {
-  try {
-    const effectiveUserId = userId || null;
-    // If no user ID is provided, do NOT restore any user's family
-    if (!effectiveUserId) {
-      resetInMemoryStore();
-      return;
-    }
-
-    const key = getAppStoreKey(effectiveUserId);
-    const serialized = await AppStorage.getItem(key);
-    if (serialized) {
-      const parsed = JSON.parse(serialized);
-      if (parsed) {
-        // Enforce strict user isolation: if stored owner doesn't match current user, ignore
-        if (parsed.ownerUserId && parsed.ownerUserId !== effectiveUserId) {
-          resetInMemoryStore();
-          return;
-        }
-
-        localAppStore.ownerUserId = effectiveUserId;
-        localAppStore.currentFamily = parsed.currentFamily || null;
-        localAppStore.members = parsed.members || [];
-        localAppStore.relationships = parsed.relationships || [];
-        localAppStore.educations = parsed.educations || [];
-        localAppStore.occupations = parsed.occupations || [];
-        return;
-      }
-    }
-
-    // If no matching persistent store found for this user, keep in-memory store clean
-    if (localAppStore.ownerUserId !== effectiveUserId) {
-      resetInMemoryStore();
-    }
-  } catch (err) {
-    console.warn('Failed to restore localAppStore:', err);
-  }
+/**
+ * Direct DB Mode: Family data is always fetched directly from Supabase DB.
+ */
+export async function restoreAppStore(_userId?: string | null): Promise<void> {
+  resetInMemoryStore();
 }
 
+/**
+ * Completely purges any legacy local device cache for all accounts.
+ */
 export async function clearAppStore(userId?: string | null): Promise<void> {
-  const effectiveUserId = userId || localAppStore.ownerUserId || null;
   resetInMemoryStore();
 
   try {
-    if (effectiveUserId) {
-      await AppStorage.removeItem(getAppStoreKey(effectiveUserId));
+    if (userId) {
+      await AppStorage.removeItem(getAppStoreKey(userId));
     }
     await AppStorage.removeItem('cf_persisted_app_store_v2_guest');
-    await AppStorage.removeItem('cf_persisted_app_store_v1'); // legacy global key
+    await AppStorage.removeItem('cf_persisted_app_store_v1');
   } catch {}
 }

@@ -1,15 +1,18 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { DirectRelationshipType, FamilyRelationship } from '@/types/database';
-import { localAppStore, persistAppStore, restoreAppStore } from '@/features/family/familyStore';
 
 export const relationshipsService = {
   /**
-   * Fetch all explicit relationships for a given family
+   * Fetch all explicit relationships for a given family directly from Supabase Cloud DB
    */
   async getFamilyRelationships(familyId: string): Promise<{
     relationships: FamilyRelationship[];
     error?: string;
   }> {
+    if (!familyId) {
+      return { relationships: [] };
+    }
+
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase
@@ -18,24 +21,22 @@ export const relationshipsService = {
           .eq('family_id', familyId);
 
         if (!error && data) {
-          localAppStore.relationships = data as FamilyRelationship[];
-          await persistAppStore();
           return { relationships: data as FamilyRelationship[] };
         }
-      } catch (err) {
+        if (error) {
+          return { relationships: [], error: error.message };
+        }
+      } catch (err: any) {
         console.warn('Error fetching live relationships from Supabase:', err);
+        return { relationships: [], error: err?.message || 'Failed to fetch relationships' };
       }
     }
 
-    if (localAppStore.relationships.length === 0) {
-      await restoreAppStore();
-    }
-
-    return { relationships: localAppStore.relationships };
+    return { relationships: [] };
   },
 
   /**
-   * Link two family members explicitly
+   * Link two family members explicitly directly in Supabase Cloud DB
    */
   async addRelationship(
     familyId: string,
@@ -47,58 +48,50 @@ export const relationshipsService = {
       return { error: 'A member cannot have a relationship with themselves.' };
     }
 
-    const newRel: FamilyRelationship = {
-      id: 'rel-' + Date.now(),
-      family_id: familyId,
-      from_member_id: fromMemberId,
-      to_member_id: toMemberId,
-      relationship_type: relationshipType,
-      created_at: new Date().toISOString(),
-    };
-
-    localAppStore.relationships.push(newRel);
-
-    if (relationshipType === 'SPOUSE') {
-      localAppStore.relationships.push({
-        id: 'rel-' + (Date.now() + 1),
-        family_id: familyId,
-        from_member_id: toMemberId,
-        to_member_id: fromMemberId,
-        relationship_type: 'SPOUSE',
-        created_at: new Date().toISOString(),
-      });
-    }
-
-    await persistAppStore();
-
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('family_relationships').insert({
+        const { error } = await supabase.from('family_relationships').insert({
           family_id: familyId,
           from_member_id: fromMemberId,
           to_member_id: toMemberId,
           relationship_type: relationshipType,
         });
-      } catch {}
+
+        if (error) return { error: error.message };
+
+        if (relationshipType === 'SPOUSE') {
+          await supabase.from('family_relationships').insert({
+            family_id: familyId,
+            from_member_id: toMemberId,
+            to_member_id: fromMemberId,
+            relationship_type: 'SPOUSE',
+          });
+        }
+
+        return {};
+      } catch (err: any) {
+        return { error: err?.message || 'Failed to save relationship' };
+      }
     }
 
     return {};
   },
 
   /**
-   * Delete a relationship link
+   * Delete a relationship link directly from Supabase Cloud DB
    */
   async deleteRelationship(relationshipId: string): Promise<{ error?: string }> {
-    localAppStore.relationships = localAppStore.relationships.filter((r) => r.id !== relationshipId);
-    await persistAppStore();
-
     if (isSupabaseConfigured) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('family_relationships')
           .delete()
           .eq('id', relationshipId);
-      } catch {}
+
+        if (error) return { error: error.message };
+      } catch (err: any) {
+        return { error: err?.message || 'Failed to delete relationship' };
+      }
     }
 
     return {};

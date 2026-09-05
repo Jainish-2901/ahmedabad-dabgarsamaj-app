@@ -3,7 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { AppStorage } from '@/lib/storage/appStorage';
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
 import { Profile, UserRole } from '@/types/database';
-import { clearAppStore, restoreAppStore, resetInMemoryStore } from '@/features/family/familyStore';
+import { clearAppStore, resetInMemoryStore } from '@/features/family/familyStore';
 
 interface AuthContextType {
   user: User | null;
@@ -117,8 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (stored.session) {
           setSession(stored.session);
         }
-        // ONLY restore family data strictly for this specific user
-        await restoreAppStore(stored.user.id);
       } else {
         resetInMemoryStore();
       }
@@ -130,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         // 2. Check Supabase online session
-        const { data: { session: onlineSession }, error: sessionErr } = await supabase.auth.getSession();
+        const { data: { session: onlineSession } } = await supabase.auth.getSession();
         if (onlineSession && onlineSession.user) {
           setSession(onlineSession);
           setUser(onlineSession.user);
@@ -141,7 +139,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await clearAppStore(stored.user.id);
           }
 
-          await restoreAppStore(onlineSession.user.id);
           await fetchProfile(onlineSession.user.id, onlineSession.user, onlineSession);
         } else if (stored.session && !onlineSession) {
           // Keep session alive offline or during network slow-down
@@ -194,7 +191,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             setSession(authSession);
             setUser(authSession.user);
-            await restoreAppStore(authSession.user.id);
             await fetchProfile(authSession.user.id, authSession.user, authSession);
           }
         }
@@ -206,10 +202,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const resolveEmailFromIdentifier = async (identifier: string): Promise<string | null> => {
+  const resolveCandidateEmails = async (identifier: string): Promise<string[]> => {
     const trimmed = identifier.trim();
+    const candidates: string[] = [];
+
     if (trimmed.includes('@')) {
-      return trimmed.toLowerCase();
+      const inputEmail = trimmed.toLowerCase();
+      candidates.push(inputEmail);
+
+      if (isSupabaseConfigured) {
+        try {
+          // Check if this inputEmail belongs to a member in family_members
+          const { data: memberData } = await supabase
+            .from('family_members')
+            .select('id, email, can_edit_family, family_id, occupation_details')
+            .or(`email.ilike.${inputEmail},occupation_details->>email.ilike.${inputEmail}`)
+            .limit(1)
+            .maybeSingle();
+
+          if (memberData?.family_id) {
+            const { data: famData } = await supabase
+              .from('families')
+              .select('head_user_id')
+              .eq('id', memberData.family_id)
+              .maybeSingle();
+
+            if (famData?.head_user_id) {
+              const { data: pData } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('auth_user_id', famData.head_user_id)
+                .maybeSingle();
+
+              if (pData?.email && !candidates.includes(pData.email.toLowerCase())) {
+                candidates.push(pData.email.toLowerCase());
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Error resolving candidate head email for input email:', e);
+        }
+      }
+      return candidates;
     }
 
     // It's a mobile number: clean digits and lookup
@@ -217,15 +251,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const last10 = cleanMobile.slice(-10);
 
     if (last10.length < 7) {
-      return null;
+      return [];
     }
 
     if (!isSupabaseConfigured) {
-      return `${cleanMobile}@community.dabgar.org`;
+      return [`${cleanMobile}@community.dabgar.org`];
     }
 
     try {
-      // 1. Check profiles table by phone
+      // 1. Check profiles table by phone (Family Head)
       const { data: profData } = await supabase
         .from('profiles')
         .select('email')
@@ -233,8 +267,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .limit(1)
         .maybeSingle();
 
-      if (profData?.email) {
-        return profData.email;
+      if (profData?.email && !candidates.includes(profData.email.toLowerCase())) {
+        candidates.push(profData.email.toLowerCase());
       }
 
       // 2. Check family_members table by mobile
@@ -247,11 +281,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (memberData) {
         const memEmail = memberData.email || (memberData.occupation_details as any)?.email;
-        const canEdit = memberData.can_edit_family === true || (memberData.occupation_details as any)?.can_edit_family === true;
-
-        // If member has edit rights and their own email, prefer their email
-        if (canEdit && memEmail) {
-          return memEmail;
+        if (memEmail && !candidates.includes(memEmail.toLowerCase())) {
+          candidates.push(memEmail.toLowerCase());
         }
 
         if (memberData.family_id) {
@@ -268,17 +299,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .eq('auth_user_id', famData.head_user_id)
               .maybeSingle();
 
-            if (pData?.email) {
-              return pData.email;
+            if (pData?.email && !candidates.includes(pData.email.toLowerCase())) {
+              candidates.push(pData.email.toLowerCase());
             }
           }
         }
       }
     } catch (err) {
-      console.warn('Error resolving email from phone:', err);
+      console.warn('Error resolving candidate emails from phone:', err);
     }
 
-    return null;
+    return candidates;
+  };
+
+  const resolveEmailFromIdentifier = async (identifier: string): Promise<string | null> => {
+    const candidates = await resolveCandidateEmails(identifier);
+    return candidates.length > 0 ? candidates[0] : null;
   };
 
   const signInWithEmail = async (identifier: string, password: string) => {
@@ -288,15 +324,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await clearAppStore(user.id);
     }
 
-    const resolvedEmail = await resolveEmailFromIdentifier(identifier);
+    const candidateEmails = await resolveCandidateEmails(identifier);
 
-    if (!resolvedEmail && !identifier.includes('@')) {
-      return { error: 'આ મોબાઈલ નંબર સાથે કોઈ એકાઉન્ટ મળ્યું નથી. કૃપા કરીને સાચો નંબર અથવા ઈમેઈલ નાખો.' };
+    if (candidateEmails.length === 0 && !identifier.includes('@')) {
+      return { error: 'આ મોબાઈલ નંબર સાથે કોઈ એકાઉન્ટ અથવા સભ્ય મળ્યા નથી. કૃપા કરીને સાચો નંબર અથવા ઈમેઈલ નાખો.' };
     }
 
-    const emailToUse = resolvedEmail || identifier.trim();
+    if (candidateEmails.length === 0 && identifier.includes('@')) {
+      candidateEmails.push(identifier.trim().toLowerCase());
+    }
 
     if (!isSupabaseConfigured) {
+      const emailToUse = candidateEmails[0] || identifier.trim();
       const mockUser = { id: 'user-' + Date.now(), email: emailToUse } as User;
       const mockProfile: Profile = {
         id: 'prof-' + Date.now(),
@@ -311,40 +350,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(mockUser);
       setProfile(mockProfile);
       await savePersistentAuth(mockUser, mockProfile);
-      await restoreAppStore(mockUser.id);
       return {};
     }
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailToUse,
-        password,
-      });
+    let lastError: any = null;
 
-      if (error) {
-        return { error: error.message };
-      }
+    // Try candidate emails in order:
+    // 1. Direct member email / phone-resolved member email
+    // 2. Head email (enables permitted members to login using the family's original password!)
+    for (const emailToTry of candidateEmails) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailToTry,
+          password,
+        });
 
-      if (data.user) {
-        resetInMemoryStore();
-        setUser(data.user);
-        setSession(data.session);
-        await savePersistentAuth(data.user, null, data.session);
-        await restoreAppStore(data.user.id);
-        await fetchProfile(data.user.id, data.user, data.session);
+        if (!error && data?.user) {
+          resetInMemoryStore();
+          setUser(data.user);
+          setSession(data.session);
+          await savePersistentAuth(data.user, null, data.session);
+          await fetchProfile(data.user.id, data.user, data.session);
+          return {};
+        }
+
+        lastError = error;
+      } catch (err: any) {
+        lastError = err;
       }
-      return {};
-    } catch (err: any) {
-      return { error: err?.message || 'Login failed' };
     }
+
+    return {
+      error:
+        lastError?.message === 'Invalid login credentials'
+          ? 'પાસવર્ડ ખોટો છે અથવા આ ઈમેઈલ/મોબાઈલ નંબર નોંધાયેલ નથી. કૃપા કરીને ચકાસો.'
+          : (lastError?.message || 'Login failed'),
+    };
   };
 
   const signUpWithEmail = async (email: string, password: string, phone?: string) => {
-    isExplicitSigningOut.current = false;
-    resetInMemoryStore();
-    if (user?.id) {
-      await clearAppStore(user.id);
+    // 1. Force a clean slate: sign out of any previous session in Supabase and local storage
+    isExplicitSigningOut.current = true;
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.auth.signOut();
+      } catch {}
     }
+    resetInMemoryStore();
+    await clearAppStore();
+    await savePersistentAuth(null, null);
+    setUser(null);
+    setSession(null);
+    setProfile(null);
+    isExplicitSigningOut.current = false;
 
     if (!isSupabaseConfigured) {
       const mockUser = { id: 'user-' + Date.now(), email: email.trim() } as User;
@@ -361,11 +419,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(mockUser);
       setProfile(mockProfile);
       await savePersistentAuth(mockUser, mockProfile);
-      await restoreAppStore(mockUser.id);
       return {};
     }
 
     try {
+      // 2. Security Check: Prevent existing family members from registering as new family heads
+      if (phone?.trim()) {
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        const last10 = cleanPhone.slice(-10);
+        if (last10.length >= 7) {
+          const { data: existingMember } = await supabase
+            .from('family_members')
+            .select('id, name, relation, family_id')
+            .ilike('mobile', `%${last10}%`)
+            .eq('status', 'ACTIVE')
+            .limit(1)
+            .maybeSingle();
+
+          if (existingMember) {
+            return {
+              error: `આ મોબાઈલ નંબર (${phone.trim()}) પહેલેથી જ પરિવારના સભ્ય (${existingMember.name}) તરીકે નોંધાયેલ છે. આપ નવું પરિવાર ખાતું બનાવી શકતા નથી. કૃપા કરીને આપના પરિવારના વડા (Head) નો સંપર્ક કરો અથવા લૉગિન કરો.`,
+            };
+          }
+
+          const { data: existingProf } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('phone', `%${last10}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (existingProf) {
+            return {
+              error: `આ મોબાઈલ નંબર (${phone.trim()}) સાથે પહેલેથી જ ખાતું નોંધાયેલું છે. કૃપા કરીને લૉગિન કરો.`,
+            };
+          }
+        }
+      }
+
+      if (email?.trim()) {
+        const cleanEmail = email.trim().toLowerCase();
+        const { data: existingMemberByEmail } = await supabase
+          .from('family_members')
+          .select('id, name, relation, family_id')
+          .or(`email.ilike.${cleanEmail},occupation_details->>email.ilike.${cleanEmail}`)
+          .eq('status', 'ACTIVE')
+          .limit(1)
+          .maybeSingle();
+
+        if (existingMemberByEmail) {
+          return {
+            error: `આ ઈમેઈલ (${email.trim()}) પહેલેથી જ પરિવારના સભ્ય (${existingMemberByEmail.name}) તરીકે નોંધાયેલ છે. આપ નવું પરિવાર ખાતું બનાવી શકતા નથી. કૃપા કરીને લૉગિન કરો અથવા પરિવારના વડા (Head) નો સંપર્ક કરો.`,
+          };
+        }
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -401,8 +509,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetInMemoryStore();
         setUser(activeUser);
         setSession(activeSession);
-        await savePersistentAuth(activeUser, profile, activeSession);
-        await restoreAppStore(activeUser.id);
+        setProfile(null);
+        await savePersistentAuth(activeUser, null, activeSession);
 
         // Ensure profile has phone number recorded
         if (phone?.trim()) {
@@ -666,6 +774,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             error: 'ઈમેઈલ મોકલવાની મર્યાદા (Rate Limit) ઓળંગાઈ છે. સિક્યોરિટી ખાતર કૃપા કરીને ૬૦ સેકન્ડ (૧ મિનિટ) રાહ જોઈને ફરીથી પ્રયત્ન કરો.',
           };
         }
+        if (
+          error.message?.toLowerCase().includes('error sending recovery email') ||
+          (error as any).status === 500
+        ) {
+          return {
+            error:
+              'ઈમેઈલ સર્વરમાંથી OTP મોકલવામાં સમસ્યા આવી (Error sending recovery email).\n\n💡 જો આપ પરિવારના સભ્ય છો, તો પરિવારના વડા (Head) ના મુખ્ય પાસવર્ડ વડે આપના મોબાઈલ નંબર અથવા ઈમેઈલથી સીધા જ લૉગિન કરી શકો છો, પાસવર્ડ રીસેટ કરવાની જરૂર નથી.',
+          };
+        }
         return { error: error.message };
       }
 
@@ -685,10 +802,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     otp: string,
     newPassword: string
   ): Promise<{ success?: boolean; error?: string }> => {
-    const cleanOtp = otp.replace(/[^0-9]/g, '').trim();
+    const cleanOtp = otp.trim();
 
     if (!cleanOtp || cleanOtp.length < 6) {
-      return { error: 'કૃપા કરીને આપના ઈમેઈલ પર આવેલ ૬ આંકડાનો OTP દાખલ કરો.' };
+      return { error: 'કૃપા કરીને આપના ઈમેઈલ પર આવેલ સાચો OTP દાખલ કરો.' };
     }
 
     if (!newPassword || newPassword.length < 8) {
