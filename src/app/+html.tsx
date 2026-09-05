@@ -15,7 +15,7 @@ export default function Root({ children }: PropsWithChildren) {
     process.env.EXPO_PUBLIC_SITE_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '') ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    'https://ahmedabad-dabgarsamaj-app.vercel.app';
+    'https://ahmedabaddabgarsamaj.vercel.app';
   const siteUrl = rawSiteUrl.replace(/\/$/, '');
   const ogImageUrl = `${siteUrl}/icon-512.png`;
 
