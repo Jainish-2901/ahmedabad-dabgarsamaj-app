@@ -33,7 +33,10 @@ export default function DownloadAppScreen() {
   const APK_FILE_NAME = 'Ahmedabad-Dabgar-Samaj.apk';
 
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web') {
+      router.replace('/(family)/about' as any);
+      return;
+    }
 
     // Detect if running on iOS (iPhone / iPad / iPod)
     if (typeof window !== 'undefined' && window.navigator) {

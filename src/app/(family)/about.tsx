@@ -10,6 +10,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -284,31 +285,33 @@ export default function AboutScreen() {
         {/* Mobile App Download & Legal Links Card */}
         <Card style={styles.actionLinksCard}>
           <Text style={[styles.actionSectionTitle, { color: theme.text }]}>
-            📲 ઍપ્લિકેશન અને નીતિઓ (Downloads & Legal)
+            {Platform.OS === 'web' ? '📲 ઍપ્લિકેશન અને નીતિઓ (Downloads & Legal)' : '📜 નીતિઓ અને શરતો (Policies & Legal)'}
           </Text>
 
-          {/* Download Official App Banner */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push('/download' as any)}
-            style={[styles.downloadBannerBtn, { backgroundColor: '#059669' }]}
-          >
-            <View style={styles.downloadBannerIconBox}>
-              <Ionicons name="cloud-download" size={24} color="#FFFFFF" />
-            </View>
-            <View style={styles.downloadBannerInfo}>
-              <View style={styles.downloadBannerBadgeRow}>
-                <Text style={styles.downloadBannerTitle}>ઓફિશિયલ એપ ડાઉનલોડ કરો</Text>
-                <View style={styles.livePill}>
-                  <Text style={styles.livePillText}>APK & iOS</Text>
-                </View>
+          {/* Download Official App Banner - Only on Web */}
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => router.push('/download' as any)}
+              style={[styles.downloadBannerBtn, { backgroundColor: '#059669' }]}
+            >
+              <View style={styles.downloadBannerIconBox}>
+                <Ionicons name="cloud-download" size={24} color="#FFFFFF" />
               </View>
-              <Text style={styles.downloadBannerSubtitle}>
-                Android APK અને iPhone PWA ડાયરેક્ટ ઇન્સ્ટોલ
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+              <View style={styles.downloadBannerInfo}>
+                <View style={styles.downloadBannerBadgeRow}>
+                  <Text style={styles.downloadBannerTitle}>ઓફિશિયલ એપ ડાઉનલોડ કરો</Text>
+                  <View style={styles.livePill}>
+                    <Text style={styles.livePillText}>APK & iOS</Text>
+                  </View>
+                </View>
+                <Text style={styles.downloadBannerSubtitle}>
+                  Android APK અને iPhone PWA ડાયરેક્ટ ઇન્સ્ટોલ
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
 
           {/* Legal Links (Privacy & Terms) */}
           <View style={styles.legalLinksGrid}>
@@ -347,7 +350,7 @@ export default function AboutScreen() {
         {/* Footer & All Rights Reserved */}
         <View style={styles.footerContainer}>
           <Text style={[styles.versionText, { color: theme.textSecondary }]}>
-            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • Version 1.0.1
+            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • Version 1.0.2
           </Text>
           <View style={styles.footerLinksRow}>
             <TouchableOpacity onPress={() => router.push('/privacy' as any)}>
@@ -357,10 +360,14 @@ export default function AboutScreen() {
             <TouchableOpacity onPress={() => router.push('/terms' as any)}>
               <Text style={[styles.footerLinkText, { color: theme.primary }]}>Terms & Conditions</Text>
             </TouchableOpacity>
-            <Text style={{ color: theme.textSecondary }}>•</Text>
-            <TouchableOpacity onPress={() => router.push('/download' as any)}>
-              <Text style={[styles.footerLinkText, { color: theme.primary }]}>Download App</Text>
-            </TouchableOpacity>
+            {Platform.OS === 'web' && (
+              <>
+                <Text style={{ color: theme.textSecondary }}>•</Text>
+                <TouchableOpacity onPress={() => router.push('/download' as any)}>
+                  <Text style={[styles.footerLinkText, { color: theme.primary }]}>Download App</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
           <Text style={[styles.copyrightText, { color: theme.textSecondary }]}>
             © 2026 શ્રી અમદાવાદ ડબગર સમાજ. All Rights Reserved.
