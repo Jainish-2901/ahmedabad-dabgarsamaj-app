@@ -2,7 +2,7 @@
   "expo": {
     "name": "Dabgar Samaj",
     "slug": "community-family",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -15,12 +15,12 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.dabgar.samajpustika",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "icon": "./assets/images/icon.png"
     },
     "android": {
       "package": "com.dabgar.samajpustika",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
