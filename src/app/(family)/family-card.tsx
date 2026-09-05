@@ -19,10 +19,12 @@ import { BottomTabBar } from '@/components/navigation/BottomTabBar';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export default function FamilyCardScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { user } = useAuth();
 
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -31,7 +33,14 @@ export default function FamilyCardScreen() {
 
   const loadData = async () => {
     setError('');
-    const res = await familyService.getMyFamily();
+    if (!user?.id) {
+      setFamily(null);
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
+
+    const res = await familyService.getMyFamily(user.id);
     if (res.error) {
       setError(res.error);
     } else {
@@ -43,7 +52,7 @@ export default function FamilyCardScreen() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.id]);
 
   if (loading) {
     return <LoadingState message="Generating digital family card..." />;

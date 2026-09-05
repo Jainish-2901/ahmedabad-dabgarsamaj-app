@@ -90,8 +90,8 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    if (!newPassword || newPassword.length < 6) {
-      setErrorMessage('નવો પાસવર્ડ ઓછામાં ઓછો ૬ અક્ષરનો હોવો જોઈએ.');
+    if (!newPassword || newPassword.length < 8) {
+      setErrorMessage('નવો પાસવર્ડ ઓછામાં ઓછો ૮ અક્ષરનો હોવો જોઈએ.');
       return;
     }
 

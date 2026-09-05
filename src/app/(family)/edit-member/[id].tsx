@@ -31,11 +31,13 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { TopBar } from '@/components/navigation/TopBar';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export default function EditMemberScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -80,10 +82,10 @@ export default function EditMemberScreen() {
   const [separatePincode, setSeparatePincode] = useState('');
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user?.id) return;
 
     const loadAll = async () => {
-      const famRes = await familyService.getMyFamily();
+      const famRes = await familyService.getMyFamily(user.id);
       if (famRes.family) {
         setFamily(famRes.family);
         const others = famRes.members.filter((m) => m.id !== id);

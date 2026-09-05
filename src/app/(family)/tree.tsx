@@ -24,10 +24,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { TopBar } from '@/components/navigation/TopBar';
 import { BottomTabBar } from '@/components/navigation/BottomTabBar';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export default function FamilyTreeScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { user } = useAuth();
   const viewShotRef = useRef<any>(null);
 
   const [family, setFamily] = useState<Family | null>(null);
@@ -40,7 +42,14 @@ export default function FamilyTreeScreen() {
 
   const loadTree = async () => {
     setError('');
-    const famRes = await familyService.getMyFamily();
+    if (!user?.id) {
+      setFamily(null);
+      setTreeData(null);
+      setLoading(false);
+      return;
+    }
+
+    const famRes = await familyService.getMyFamily(user.id);
     if (famRes.error) {
       setError(famRes.error);
       setLoading(false);
@@ -49,6 +58,7 @@ export default function FamilyTreeScreen() {
 
     if (!famRes.family) {
       setFamily(null);
+      setTreeData(null);
       setLoading(false);
       return;
     }
@@ -63,7 +73,7 @@ export default function FamilyTreeScreen() {
 
   useEffect(() => {
     loadTree();
-  }, []);
+  }, [user?.id]);
 
   const handleZoomIn = () => {
     setZoomScale((prev) => Math.min(1.8, prev + 0.15));

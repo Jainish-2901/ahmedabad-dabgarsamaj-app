@@ -2,7 +2,8 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Area, Family, FamilyMember } from '@/types/database';
 import { calculateAge, formatDate, formatDateForDB } from '@/lib/utils/date';
 import { getRelationshipDisplay } from '@/constants/relationships';
-import { DEFAULT_AREAS, localAppStore, persistAppStore, restoreAppStore, clearAppStore } from './familyStore';
+import { localAppStore, persistAppStore, restoreAppStore, clearAppStore, resetInMemoryStore } from './familyStore';
+import { AppStorage } from '@/lib/storage/appStorage';
 
 export interface CreateFamilyInput {
   name: string;
@@ -35,167 +36,193 @@ export const familyService = {
    * Get current user's family and members from Supabase Cloud DB with offline fallback
    */
   async getMyFamily(passedUserId?: string): Promise<{ family: Family | null; members: FamilyMember[]; error?: string }> {
-    // 1. Try to fetch from Supabase Cloud Database first
+    let userId: string | null = passedUserId || null;
+
+    // 1. Resolve currently authenticated User ID
+    if (!userId && isSupabaseConfigured) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        userId = sessionData?.session?.user?.id || null;
+      } catch {}
+    }
+
+    if (!userId && isSupabaseConfigured) {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        userId = userData?.user?.id || null;
+      } catch {}
+    }
+
+    if (!userId) {
+      try {
+        const stored = await AppStorage.getItem('cf_persistent_auth_user_v2');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          userId = parsed?.user?.id || null;
+        } else {
+          const legacyStored = await AppStorage.getItem('cf_persistent_auth_user_v1');
+          if (legacyStored) {
+            const parsed = JSON.parse(legacyStored);
+            userId = parsed?.user?.id || null;
+          }
+        }
+      } catch {}
+    }
+
+    // STRICT ISOLATION: If no user is logged in, NEVER return ANY cached family!
+    if (!userId) {
+      resetInMemoryStore();
+      return { family: null, members: [] };
+    }
+
+    // 2. Try to fetch from Supabase Cloud Database first
     if (isSupabaseConfigured) {
       try {
-        let userId: string | null = passedUserId || null;
+        // A. Fetch family for this user as head
+        let { data: familyData, error: familyError } = await supabase
+          .from('families')
+          .select('*')
+          .eq('head_user_id', userId)
+          .eq('status', 'ACTIVE')
+          .maybeSingle();
 
-        if (!userId) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          userId = sessionData?.session?.user?.id || null;
-        }
-
-        if (!userId) {
-          const { data: userData } = await supabase.auth.getUser();
-          userId = userData?.user?.id || null;
-        }
-
-        if (userId) {
-          // 1. Fetch family for this user as head
-          let { data: familyData, error: familyError } = await supabase
-            .from('families')
+        // B. If not found by head_user_id, check member link via profile phone or email
+        if (!familyData) {
+          const { data: userProfile } = await supabase
+            .from('profiles')
             .select('*')
-            .eq('head_user_id', userId)
-            .eq('status', 'ACTIVE')
+            .eq('auth_user_id', userId)
             .maybeSingle();
 
-          // 2. If not found by head_user_id, check member link via profile phone or email
-          if (!familyData) {
-            const { data: userProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('auth_user_id', userId)
+          if (userProfile?.phone) {
+            const cleanPhone = userProfile.phone.replace(/[^0-9]/g, '').slice(-10);
+            const { data: memberByPhone } = await supabase
+              .from('family_members')
+              .select('family_id')
+              .ilike('mobile', `%${cleanPhone}%`)
               .maybeSingle();
 
-            if (userProfile?.phone) {
-              const { data: memberByPhone } = await supabase
+            if (memberByPhone?.family_id) {
+              const { data: famById } = await supabase
+                .from('families')
+                .select('*')
+                .eq('id', memberByPhone.family_id)
+                .eq('status', 'ACTIVE')
+                .maybeSingle();
+              familyData = famById;
+            }
+          }
+
+          // Check member link via profile email or auth user email
+          if (!familyData) {
+            let userEmail = userProfile?.email;
+            if (!userEmail) {
+              const { data: authUser } = await supabase.auth.getUser();
+              userEmail = authUser?.user?.email;
+            }
+            if (userEmail) {
+              const { data: memberByEmail } = await supabase
                 .from('family_members')
                 .select('family_id')
-                .eq('mobile', userProfile.phone.trim())
+                .ilike('email', userEmail.trim())
                 .maybeSingle();
 
-              if (memberByPhone?.family_id) {
+              if (memberByEmail?.family_id) {
                 const { data: famById } = await supabase
                   .from('families')
                   .select('*')
-                  .eq('id', memberByPhone.family_id)
+                  .eq('id', memberByEmail.family_id)
                   .eq('status', 'ACTIVE')
                   .maybeSingle();
                 familyData = famById;
               }
             }
-
-            // Check member link via profile email or session user email
-            if (!familyData) {
-              let userEmail = userProfile?.email;
-              if (!userEmail) {
-                const { data: authUser } = await supabase.auth.getUser();
-                userEmail = authUser?.user?.email;
-              }
-              if (userEmail) {
-                const { data: memberByEmail } = await supabase
-                  .from('family_members')
-                  .select('family_id')
-                  .ilike('email', userEmail.trim())
-                  .maybeSingle();
-
-                if (memberByEmail?.family_id) {
-                  const { data: famById } = await supabase
-                    .from('families')
-                    .select('*')
-                    .eq('id', memberByEmail.family_id)
-                    .eq('status', 'ACTIVE')
-                    .maybeSingle();
-                  familyData = famById;
-                }
-              }
-            }
           }
+        }
 
-          // 3. Fallback: If this user created or belongs to the community's active family record
-          if (!familyData) {
-            const { data: latestFamily } = await supabase
-              .from('families')
-              .select('*')
-              .eq('status', 'ACTIVE')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+        // NOTE: NO RANDOM FALLBACK! If user has no active family, do NOT assign someone else's family!
 
-            if (latestFamily) {
-              familyData = latestFamily;
-            }
-          }
+        if (familyData && !familyError) {
+          // Fetch live members from Supabase
+          const { data: membersData, error: membersError } = await supabase
+            .from('family_members')
+            .select('*')
+            .eq('family_id', familyData.id)
+            .eq('status', 'ACTIVE')
+            .order('created_at', { ascending: true });
 
-          if (familyData && !familyError) {
-            // Fetch live members from Supabase
-            const { data: membersData, error: membersError } = await supabase
-              .from('family_members')
-              .select('*')
-              .eq('family_id', familyData.id)
-              .eq('status', 'ACTIVE')
-              .order('created_at', { ascending: true });
-
-            if (!membersError && membersData) {
-              const members: FamilyMember[] = membersData.map((m: any) => {
-                const isDeceased = m.is_deceased === true || m.status === 'DECEASED' || m.occupation_details?.is_deceased === true;
-                const deceasedDate = m.deceased_date || m.occupation_details?.deceased_date || null;
-                const canEdit = m.can_edit_family === true || m.occupation_details?.can_edit_family === true || m.relation === 'FAMILY_HEAD';
-                const memberEmail = m.email || m.occupation_details?.email || null;
-                return {
-                  ...m,
-                  email: memberEmail,
-                  can_edit_family: canEdit,
-                  blood_group: m.blood_group || m.occupation_details?.blood_group || null,
-                  birth_place: m.birth_place || m.occupation_details?.birth_place || null,
-                  is_deceased: isDeceased,
-                  deceased_date: deceasedDate,
-                  age: calculateAge(m.dob),
-                  display_relation: getRelationshipDisplay(m.relation),
-                };
-              });
-
-              const family: Family = {
-                ...familyData,
-                members_count: members.length,
+          if (!membersError && membersData) {
+            const members: FamilyMember[] = membersData.map((m: any) => {
+              const isDeceased = m.is_deceased === true || m.status === 'DECEASED' || m.occupation_details?.is_deceased === true;
+              const deceasedDate = m.deceased_date || m.occupation_details?.deceased_date || null;
+              const canEdit = m.can_edit_family === true || m.occupation_details?.can_edit_family === true || m.relation === 'FAMILY_HEAD';
+              const memberEmail = m.email || m.occupation_details?.email || null;
+              return {
+                ...m,
+                email: memberEmail,
+                can_edit_family: canEdit,
+                blood_group: m.blood_group || m.occupation_details?.blood_group || null,
+                birth_place: m.birth_place || m.occupation_details?.birth_place || null,
+                is_deceased: isDeceased,
+                deceased_date: deceasedDate,
+                age: calculateAge(m.dob),
+                display_relation: getRelationshipDisplay(m.relation),
               };
+            });
 
-              const memberIds = members.map((m) => m.id);
+            const family: Family = {
+              ...familyData,
+              members_count: members.length,
+            };
 
-              // Fetch education records for all members
-              const { data: eduData } = await supabase
-                .from('education_records')
-                .select('*')
-                .in('family_member_id', memberIds);
+            const memberIds = members.map((m) => m.id);
 
-              // Fetch occupation records for all members
-              const { data: occData } = await supabase
-                .from('occupation_records')
-                .select('*')
-                .in('family_member_id', memberIds);
+            // Fetch education records for all members
+            const { data: eduData } = await supabase
+              .from('education_records')
+              .select('*')
+              .in('family_member_id', memberIds);
 
-              // Update local store as resilient offline cache
-              localAppStore.currentFamily = family;
-              localAppStore.members = members;
-              if (eduData) localAppStore.educations = eduData;
-              if (occData) localAppStore.occupations = occData;
-              await persistAppStore();
+            // Fetch occupation records for all members
+            const { data: occData } = await supabase
+              .from('occupation_records')
+              .select('*')
+              .in('family_member_id', memberIds);
 
-              return { family, members };
-            }
+            // Update local store as resilient offline cache strictly for THIS user
+            localAppStore.ownerUserId = userId;
+            localAppStore.currentFamily = family;
+            localAppStore.members = members;
+            if (eduData) localAppStore.educations = eduData;
+            if (occData) localAppStore.occupations = occData;
+            await persistAppStore(userId);
+
+            return { family, members };
           }
+        } else if (!familyData) {
+          // If the user has no family registered in Supabase, make sure their local cache is clean
+          if (localAppStore.ownerUserId === userId) {
+            localAppStore.currentFamily = null;
+            localAppStore.members = [];
+            localAppStore.relationships = [];
+            localAppStore.educations = [];
+            localAppStore.occupations = [];
+            await persistAppStore(userId);
+          }
+          return { family: null, members: [] };
         }
       } catch (err) {
         console.warn('Supabase getMyFamily network fallback:', err);
       }
     }
 
-    // 2. Fallback to Local Persistent Store (Mobile testing data preserved)
-    if (!localAppStore.currentFamily || localAppStore.members.length === 0) {
-      await restoreAppStore();
-    }
+    // 3. Fallback to Local Persistent Store ONLY if it belongs to THIS exact user
+    await restoreAppStore(userId);
 
-    if (localAppStore.currentFamily) {
+    if (
+      localAppStore.currentFamily &&
+      (localAppStore.ownerUserId === userId || localAppStore.currentFamily.head_user_id === userId)
+    ) {
       const members = localAppStore.members.map((m) => ({
         ...m,
         age: calculateAge(m.dob),
@@ -388,6 +415,33 @@ export const familyService = {
    * Create a new family and automatically create the Family Head member record
    */
   async createFamilyWithHead(input: CreateFamilyInput): Promise<{ family?: Family; error?: string }> {
+    let resolvedUserId: string | null = input.head_user_id || null;
+
+    if (!resolvedUserId && isSupabaseConfigured) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        resolvedUserId = sessionData?.session?.user?.id || null;
+      } catch {}
+    }
+
+    if (!resolvedUserId && isSupabaseConfigured) {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        resolvedUserId = userData?.user?.id || null;
+      } catch {}
+    }
+
+    if (!resolvedUserId) {
+      try {
+        const stored = await AppStorage.getItem('cf_persistent_auth_user_v2');
+        if (stored) {
+          resolvedUserId = JSON.parse(stored)?.user?.id || null;
+        }
+      } catch {}
+    }
+
+    const effectiveUserId = resolvedUserId || 'user-' + Date.now();
+
     const newFamilyId = 'fam-' + Date.now();
     const headMemberId = 'mem-' + Date.now();
     const familyCode = 'FAM-' + Math.floor(100000 + Math.random() * 900000);
@@ -395,7 +449,7 @@ export const familyService = {
     const localFam: Family = {
       id: newFamilyId,
       family_code: familyCode,
-      head_user_id: 'user-' + Date.now(),
+      head_user_id: effectiveUserId,
       address: input.address.trim(),
       area_id: null,
       area: null,
@@ -429,9 +483,10 @@ export const familyService = {
       display_relation: 'Family Head / પરિવાર વડા',
     };
 
+    localAppStore.ownerUserId = effectiveUserId;
     localAppStore.currentFamily = localFam;
     localAppStore.members = [headMember];
-    await persistAppStore();
+    await persistAppStore(effectiveUserId);
 
     if (!isSupabaseConfigured) {
       return { family: localFam };
@@ -596,6 +651,7 @@ export const familyService = {
         } catch {}
       }
 
+      localAppStore.ownerUserId = effectiveUserId;
       localAppStore.currentFamily = familyData as Family;
       if (headData) {
         localAppStore.members = [{
@@ -604,7 +660,7 @@ export const familyService = {
           display_relation: getRelationshipDisplay(headData.relation),
         }];
       }
-      await persistAppStore();
+      await persistAppStore(effectiveUserId);
       return { family: familyData as Family };
     } catch (err: any) {
       console.error('createFamilyWithHead error:', err);
@@ -622,7 +678,7 @@ export const familyService = {
         ...updates,
         updated_at: new Date().toISOString(),
       };
-      await persistAppStore();
+      await persistAppStore(localAppStore.ownerUserId);
     }
 
     if (isSupabaseConfigured) {

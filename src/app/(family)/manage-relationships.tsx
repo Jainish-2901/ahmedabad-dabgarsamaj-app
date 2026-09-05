@@ -17,10 +17,12 @@ import { Card } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { TopBar } from '@/components/navigation/TopBar';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export default function ManageRelationshipsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { user } = useAuth();
 
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
@@ -36,7 +38,15 @@ export default function ManageRelationshipsScreen() {
 
   const loadData = async () => {
     setError('');
-    const famRes = await familyService.getMyFamily();
+    if (!user?.id) {
+      setFamily(null);
+      setMembers([]);
+      setRelationships([]);
+      setLoading(false);
+      return;
+    }
+
+    const famRes = await familyService.getMyFamily(user.id);
     if (famRes.error || !famRes.family) {
       setError(famRes.error || 'Family not found');
       setLoading(false);
@@ -58,7 +68,7 @@ export default function ManageRelationshipsScreen() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.id]);
 
   const handleAddRelationship = async () => {
     if (!family || !fromMemberId || !toMemberId) {

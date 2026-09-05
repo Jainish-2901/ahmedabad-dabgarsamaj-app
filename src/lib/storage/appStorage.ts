@@ -18,6 +18,15 @@ function getSafeFilename(key: string): string {
   return `cf_storage_${sanitized}.json`;
 }
 
+function getBaseDir(): string | null {
+  const dir = FileSystem.documentDirectory;
+  if (!dir) return null;
+  return dir.endsWith('/') ? dir : `${dir}/`;
+}
+
+// In-memory fast cache to ensure immediate synchronous availability and bridge resilience
+const memoryCache = new Map<string, string>();
+
 export const AppStorage = {
   async getItem(key: string): Promise<string | null> {
     if (!key || typeof key !== 'string') return null;
@@ -26,29 +35,39 @@ export const AppStorage = {
       // 1. Web Platform
       if (Platform.OS === 'web' || typeof window !== 'undefined') {
         if (typeof window !== 'undefined' && window.localStorage) {
-          return window.localStorage.getItem(key);
+          const val = window.localStorage.getItem(key);
+          if (val !== null) return val;
         }
-        return null;
+        return memoryCache.get(key) || null;
       }
 
-      // 2. Native Platforms (Android / iOS): Use FileSystem documentDirectory
-      const dir = FileSystem.documentDirectory;
-      if (dir) {
-        const fileUri = `${dir}${getSafeFilename(key)}`;
+      // 2. Memory Cache Check (Instant)
+      if (memoryCache.has(key)) {
+        return memoryCache.get(key) || null;
+      }
+
+      // 3. Native Platforms (Android / iOS): Use FileSystem documentDirectory with normalized slash
+      const baseDir = getBaseDir();
+      if (baseDir) {
+        const fileUri = `${baseDir}${getSafeFilename(key)}`;
         const info = await FileSystem.getInfoAsync(fileUri);
         if (info.exists) {
           const content = await FileSystem.readAsStringAsync(fileUri);
-          if (content) return content;
+          if (content) {
+            memoryCache.set(key, content);
+            return content;
+          }
         }
       }
 
-      // 3. Fallback to SecureStore (for backward compatibility with previous sessions)
-      const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      // 4. Fallback to SecureStore (for backward compatibility with previous sessions)
+      const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_').slice(0, 200);
       const secureVal = await SecureStore.getItemAsync(safeKey).catch(() => null);
       if (secureVal) {
+        memoryCache.set(key, secureVal);
         // Migrate to file system storage
-        if (dir) {
-          const fileUri = `${dir}${getSafeFilename(key)}`;
+        if (baseDir) {
+          const fileUri = `${baseDir}${getSafeFilename(key)}`;
           await FileSystem.writeAsStringAsync(fileUri, secureVal).catch(() => {});
         }
         return secureVal;
@@ -57,13 +76,15 @@ export const AppStorage = {
       console.warn(`AppStorage.getItem error for key [${key}]:`, err);
     }
 
-    return null;
+    return memoryCache.get(key) || null;
   },
 
   async setItem(key: string, value: string): Promise<void> {
     if (!key || typeof key !== 'string' || value === undefined || value === null) return;
 
     try {
+      memoryCache.set(key, value);
+
       // 1. Web Platform
       if (Platform.OS === 'web' || typeof window !== 'undefined') {
         if (typeof window !== 'undefined' && window.localStorage) {
@@ -72,16 +93,16 @@ export const AppStorage = {
         return;
       }
 
-      // 2. Native Platforms: Write to persistent documentDirectory
-      const dir = FileSystem.documentDirectory;
-      if (dir) {
-        const fileUri = `${dir}${getSafeFilename(key)}`;
+      // 2. Native Platforms: Write to persistent documentDirectory with normalized slash
+      const baseDir = getBaseDir();
+      if (baseDir) {
+        const fileUri = `${baseDir}${getSafeFilename(key)}`;
         await FileSystem.writeAsStringAsync(fileUri, value);
       }
 
       // Also mirror to SecureStore if payload is small (< 1800 bytes) as secondary backup
       if (value.length < 1800) {
-        const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_').slice(0, 200);
         await SecureStore.setItemAsync(safeKey, value).catch(() => {});
       }
     } catch (err) {
@@ -93,6 +114,8 @@ export const AppStorage = {
     if (!key || typeof key !== 'string') return;
 
     try {
+      memoryCache.delete(key);
+
       // 1. Web Platform
       if (Platform.OS === 'web' || typeof window !== 'undefined') {
         if (typeof window !== 'undefined' && window.localStorage) {
@@ -102,14 +125,14 @@ export const AppStorage = {
       }
 
       // 2. Native Platforms: Remove file from documentDirectory
-      const dir = FileSystem.documentDirectory;
-      if (dir) {
-        const fileUri = `${dir}${getSafeFilename(key)}`;
+      const baseDir = getBaseDir();
+      if (baseDir) {
+        const fileUri = `${baseDir}${getSafeFilename(key)}`;
         await FileSystem.deleteAsync(fileUri, { idempotent: true }).catch(() => {});
       }
 
       // Also remove from SecureStore
-      const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const safeKey = key.replace(/[^a-zA-Z0-9.\-_]/g, '_').slice(0, 200);
       await SecureStore.deleteItemAsync(safeKey).catch(() => {});
     } catch (err) {
       console.warn(`AppStorage.removeItem error for key [${key}]:`, err);

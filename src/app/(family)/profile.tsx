@@ -66,7 +66,14 @@ export default function HeadProfileScreen() {
   const [pincode, setPincode] = useState('');
 
   const loadData = async () => {
-    const famRes = await familyService.getMyFamily();
+    if (!user?.id) {
+      setFamily(null);
+      setHeadMember(null);
+      setLoading(false);
+      return;
+    }
+
+    const famRes = await familyService.getMyFamily(user.id);
     if (famRes.family) {
       setFamily(famRes.family);
       setAddress(famRes.family.address);
@@ -82,13 +89,16 @@ export default function HeadProfileScreen() {
         setDob(formatDate(head.dob));
         setGender((head.gender as any) || 'Male');
       }
+    } else {
+      setFamily(null);
+      setHeadMember(null);
     }
     setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user?.id]);
 
   const handleSaveProfile = async () => {
     if (!headMember || !family) return;
@@ -141,8 +151,8 @@ export default function HeadProfileScreen() {
 
   const handleDirectPasswordChange = async () => {
     setPasswordMsg(null);
-    if (!newPassword || newPassword.length < 6) {
-      setPasswordMsg({ type: 'error', text: 'નવો પાસવર્ડ ઓછામાં ઓછો ૬ અક્ષરનો હોવો જોઈએ.' });
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordMsg({ type: 'error', text: 'નવો પાસવર્ડ ઓછામાં ઓછો ૮ અક્ષરનો હોવો જોઈએ.' });
       return;
     }
 

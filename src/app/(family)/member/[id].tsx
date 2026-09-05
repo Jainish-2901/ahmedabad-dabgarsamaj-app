@@ -72,7 +72,7 @@ export default function MemberDetailScreen() {
       let targetFamily: Family | null = null;
       let targetMembers: FamilyMember[] = [];
 
-      const famRes = await familyService.getMyFamily();
+      const famRes = await familyService.getMyFamily(user?.id);
       const isMyFamily = Boolean(famRes.family && famRes.family.id === currentMember.family_id);
       setIsOwnFamily(isMyFamily);
 

@@ -77,23 +77,36 @@ export default function RootSplashScreen() {
       }),
     ]).start();
 
-    // 4. Record splash start time
+    // 4. Record splash start time and navigate once ready
+    let isMounted = true;
+    const minSplashDuration = 2500;
     const startTime = Date.now();
 
-    const interval = setInterval(() => {
+    const checkAndNavigate = () => {
+      if (!isMounted) return;
       const elapsed = Date.now() - startTime;
-      if (elapsed >= 3000 && !isLoading) {
-        clearInterval(interval);
+      if (elapsed >= minSplashDuration && !isLoading) {
         if (!user) {
           router.replace('/(auth)/login' as any);
         } else {
           router.replace('/(family)/home' as any);
         }
+        return true;
       }
-    }, 100);
+      return false;
+    };
 
-    return () => clearInterval(interval);
-  }, [isLoading, user, router]);
+    const timer = setInterval(() => {
+      if (checkAndNavigate()) {
+        clearInterval(timer);
+      }
+    }, 150);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [isLoading, user]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

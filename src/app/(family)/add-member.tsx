@@ -30,10 +30,12 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { TopBar } from '@/components/navigation/TopBar';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export default function AddMemberScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { user } = useAuth();
 
   const [currentStep, setCurrentStep] = useState<number>(1);
   const totalSteps = 5;
@@ -80,7 +82,8 @@ export default function AddMemberScreen() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    familyService.getMyFamily().then((res) => {
+    if (!user?.id) return;
+    familyService.getMyFamily(user.id).then((res) => {
       if (res.family) setFamily(res.family);
       if (res.members) {
         setExistingMembers(res.members);
@@ -89,7 +92,7 @@ export default function AddMemberScreen() {
         }
       }
     });
-  }, []);
+  }, [user?.id]);
 
   const calculatedAge = calculateAge(dob);
   const selectedRel = RELATIONSHIPS.find((r) => r.code === relation);

@@ -34,7 +34,17 @@ export default function FamilyMasterScreen() {
 
   const loadData = async (targetUserId?: string) => {
     setErrorMessage('');
-    const res = await familyService.getMyFamily(targetUserId || user?.id);
+    const currentUserId = targetUserId || user?.id;
+    if (!currentUserId) {
+      setFamily(null);
+      setMembers([]);
+      setTreeData(null);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    const res = await familyService.getMyFamily(currentUserId);
     if (res.error) {
       setErrorMessage(res.error);
       setLoading(false);
@@ -49,6 +59,8 @@ export default function FamilyMasterScreen() {
       const relRes = await relationshipsService.getFamilyRelationships(res.family.id);
       const constructed = buildFamilyTree(res.members, relRes.relationships);
       setTreeData(constructed);
+    } else {
+      setTreeData(null);
     }
 
     setLoading(false);

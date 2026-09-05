@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { AppStorage } from '@/lib/storage/appStorage';
 import { supabase, isSupabaseConfigured, supabaseUrl, supabaseAnonKey } from '@/lib/supabase/client';
 import { Profile, UserRole } from '@/types/database';
-import { clearAppStore, restoreAppStore } from '@/features/family/familyStore';
+import { clearAppStore, restoreAppStore, resetInMemoryStore } from '@/features/family/familyStore';
 
 interface AuthContextType {
   user: User | null;
@@ -26,12 +26,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'cf_persistent_auth_user_v1';
+export const AUTH_STORAGE_KEY = 'cf_persistent_auth_user_v2';
 
-async function savePersistentAuth(user: User | null, profile: Profile | null, session?: Session | null): Promise<void> {
+export async function savePersistentAuth(user: User | null, profile: Profile | null, session?: Session | null): Promise<void> {
   try {
     if (!user) {
       await AppStorage.removeItem(AUTH_STORAGE_KEY);
+      await AppStorage.removeItem('cf_persistent_auth_user_v1');
       return;
     }
 
@@ -42,9 +43,12 @@ async function savePersistentAuth(user: User | null, profile: Profile | null, se
   }
 }
 
-async function loadPersistentAuth(): Promise<{ user: User | null; profile: Profile | null; session: Session | null }> {
+export async function loadPersistentAuth(): Promise<{ user: User | null; profile: Profile | null; session: Session | null }> {
   try {
-    const payload = await AppStorage.getItem(AUTH_STORAGE_KEY);
+    let payload = await AppStorage.getItem(AUTH_STORAGE_KEY);
+    if (!payload) {
+      payload = await AppStorage.getItem('cf_persistent_auth_user_v1');
+    }
     if (payload) {
       const parsed = JSON.parse(payload);
       return {
@@ -64,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isExplicitSigningOut = useRef<boolean>(false);
 
   const fetchProfile = async (userId: string, activeUser?: User | null, activeSession?: Session | null) => {
     try {
@@ -103,8 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      // 1. Restore local app data & persistent auth immediately from file storage
-      await restoreAppStore();
+      // 1. Restore persistent user immediately from local storage
       const stored = await loadPersistentAuth();
 
       if (stored.user) {
@@ -113,6 +117,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (stored.session) {
           setSession(stored.session);
         }
+        // ONLY restore family data strictly for this specific user
+        await restoreAppStore(stored.user.id);
+      } else {
+        resetInMemoryStore();
       }
 
       if (!isSupabaseConfigured) {
@@ -126,11 +134,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (onlineSession && onlineSession.user) {
           setSession(onlineSession);
           setUser(onlineSession.user);
+
+          // If the online user is different from what was previously stored, clear old cache immediately
+          if (stored.user && stored.user.id !== onlineSession.user.id) {
+            resetInMemoryStore();
+            await clearAppStore(stored.user.id);
+          }
+
+          await restoreAppStore(onlineSession.user.id);
           await fetchProfile(onlineSession.user.id, onlineSession.user, onlineSession);
         } else if (stored.session && !onlineSession) {
-          // If offline or network slow, set Supabase client session in memory from stored session
+          // Keep session alive offline or during network slow-down
           try {
-            await supabase.auth.setSession(stored.session);
+            const res = await supabase.auth.setSession({
+              access_token: stored.session.access_token,
+              refresh_token: stored.session.refresh_token,
+            });
+            if (res.data?.session) {
+              setSession(res.data.session);
+              setUser(res.data.session.user);
+            }
           } catch {}
         }
       } catch (err) {
@@ -146,19 +169,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event: string, authSession: any) => {
-          // ONLY clear user session when user explicitly signed out
+          // STRICT: ONLY wipe user session when user EXPLICITLY clicked Log Out!
+          // Supabase emits 'SIGNED_OUT' on cold boots or token refresh glitches; ignore unless explicit.
           if (event === 'SIGNED_OUT') {
-            setUser(null);
-            setSession(null);
-            setProfile(null);
-            await savePersistentAuth(null, null);
-            await clearAppStore();
+            if (isExplicitSigningOut.current) {
+              resetInMemoryStore();
+              setUser(null);
+              setSession(null);
+              setProfile(null);
+              await savePersistentAuth(null, null);
+              await clearAppStore();
+            }
             return;
           }
 
           if (authSession?.user) {
+            isExplicitSigningOut.current = false;
+
+            // If account was switched on this device, clear stale store immediately
+            if (user && user.id !== authSession.user.id) {
+              resetInMemoryStore();
+              await clearAppStore(user.id);
+            }
+
             setSession(authSession);
             setUser(authSession.user);
+            await restoreAppStore(authSession.user.id);
             await fetchProfile(authSession.user.id, authSession.user, authSession);
           }
         }
@@ -246,6 +282,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithEmail = async (identifier: string, password: string) => {
+    isExplicitSigningOut.current = false;
+    resetInMemoryStore();
+    if (user?.id) {
+      await clearAppStore(user.id);
+    }
+
     const resolvedEmail = await resolveEmailFromIdentifier(identifier);
 
     if (!resolvedEmail && !identifier.includes('@')) {
@@ -265,9 +307,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+      resetInMemoryStore();
       setUser(mockUser);
       setProfile(mockProfile);
       await savePersistentAuth(mockUser, mockProfile);
+      await restoreAppStore(mockUser.id);
       return {};
     }
 
@@ -282,9 +326,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
+        resetInMemoryStore();
         setUser(data.user);
         setSession(data.session);
         await savePersistentAuth(data.user, null, data.session);
+        await restoreAppStore(data.user.id);
         await fetchProfile(data.user.id, data.user, data.session);
       }
       return {};
@@ -294,6 +340,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUpWithEmail = async (email: string, password: string, phone?: string) => {
+    isExplicitSigningOut.current = false;
+    resetInMemoryStore();
+    if (user?.id) {
+      await clearAppStore(user.id);
+    }
+
     if (!isSupabaseConfigured) {
       const mockUser = { id: 'user-' + Date.now(), email: email.trim() } as User;
       const mockProfile: Profile = {
@@ -305,9 +357,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+      resetInMemoryStore();
       setUser(mockUser);
       setProfile(mockProfile);
       await savePersistentAuth(mockUser, mockProfile);
+      await restoreAppStore(mockUser.id);
       return {};
     }
 
@@ -344,9 +398,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch {}
         }
 
+        resetInMemoryStore();
         setUser(activeUser);
         setSession(activeSession);
         await savePersistentAuth(activeUser, profile, activeSession);
+        await restoreAppStore(activeUser.id);
 
         // Ensure profile has phone number recorded
         if (phone?.trim()) {
@@ -366,8 +422,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updatePasswordDirectly = async (newPassword: string): Promise<{ error?: string }> => {
-    if (!newPassword || newPassword.length < 6) {
-      return { error: 'પાસવર્ડ ઓછામાં ઓછો ૬ અક્ષરનો હોવો જોઈએ.' };
+    if (!newPassword || newPassword.length < 8) {
+      return { error: 'પાસવર્ડ ઓછામાં ઓછો ૮ અક્ષરનો હોવો જોઈએ.' };
     }
 
     if (!isSupabaseConfigured) {
@@ -635,8 +691,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: 'કૃપા કરીને આપના ઈમેઈલ પર આવેલ ૬ આંકડાનો OTP દાખલ કરો.' };
     }
 
-    if (!newPassword || newPassword.length < 6) {
-      return { error: 'નવો પાસવર્ડ ઓછામાં ઓછો ૬ અક્ષરનો હોવો જોઈએ.' };
+    if (!newPassword || newPassword.length < 8) {
+      return { error: 'નવો પાસવર્ડ ઓછામાં ઓછો ૮ અક્ષરનો હોવો જોઈએ.' };
     }
 
     if (!isSupabaseConfigured) {
@@ -732,8 +788,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    isExplicitSigningOut.current = true;
+    const currentUserId = user?.id;
+    resetInMemoryStore();
+    await clearAppStore(currentUserId);
     await savePersistentAuth(null, null);
-    await clearAppStore();
 
     if (isSupabaseConfigured) {
       try {
