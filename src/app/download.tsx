@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { useTheme } from '@/constants/theme';
 import { TopBar } from '@/components/navigation/TopBar';
 import { Card } from '@/components/ui/Card';
@@ -20,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 export default function DownloadAppScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const appVersion = Constants.expoConfig?.version || '1.0.3';
 
   // State for PWA install prompt & status
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -132,7 +134,7 @@ export default function DownloadAppScreen() {
 
           <View style={[styles.versionPill, { backgroundColor: theme.primaryLight }]}>
             <Text style={[styles.versionText, { color: theme.primary }]}>
-              🚀 Official Release • v1.0.2 (Android & iOS)
+              🚀 Official Release • v{appVersion} (Android & iOS)
             </Text>
           </View>
 

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { useTheme } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { useState } from 'react';
 import {
   Image,
@@ -21,6 +22,7 @@ import {
 export default function AboutScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const appVersion = Constants.expoConfig?.version || '1.0.3';
   const [imageModalVisible, setImageModalVisible] = useState(false);
 
   const handleCall = (phoneNumber: string) => {
@@ -350,7 +352,7 @@ export default function AboutScreen() {
         {/* Footer & All Rights Reserved */}
         <View style={styles.footerContainer}>
           <Text style={[styles.versionText, { color: theme.textSecondary }]}>
-            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • Version 1.0.2
+            અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા • Version {appVersion}
           </Text>
           <View style={styles.footerLinksRow}>
             <TouchableOpacity onPress={() => router.push('/privacy' as any)}>
