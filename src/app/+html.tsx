@@ -10,6 +10,15 @@ export default function Root({ children }: PropsWithChildren) {
   const keywords =
     'અમદાવાદ ડબગર સમાજ, Dabgar Samaj, Ahmedabad Dabgar Samaj, Dabgar Community, Pariwar Parichay Pustika, Dabgar Directory, ડબગર પરિચય પુસ્તિકા, Jainish Dabgar';
 
+  // Resolve absolute website URL (WhatsApp & Facebook STRICTLY require full https:// URLs for og:image)
+  const rawSiteUrl =
+    process.env.EXPO_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '') ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
+    'https://ahmedabad-dabgarsamaj-app.vercel.app';
+  const siteUrl = rawSiteUrl.replace(/\/$/, '');
+  const ogImageUrl = `${siteUrl}/icon-512.png`;
+
   return (
     <html lang="gu">
       <head>
@@ -31,18 +40,27 @@ export default function Root({ children }: PropsWithChildren) {
 
         {/* Open Graph / Facebook / WhatsApp Sharing Meta Tags */}
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="અમદાવાદ ડબગર સમાજ પરિચય પુસ્તિકા" />
+        <meta property="og:site_name" content="અમદાવાદ ડબગર સમાજ ડિજિટલ પરિચય પુસ્તિકા" />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
-        <meta property="og:image" content="/icon.png" />
-        <meta property="og:image:alt" content="અમદાવાદ ડબગર સમાજ પ્રતીક" />
+        {siteUrl ? <meta property="og:url" content={siteUrl} /> : null}
+        
+        {/* WhatsApp & Social Media Preview Image (Must have absolute HTTPS URL, dimensions & type) */}
+        <meta property="og:image" content={ogImageUrl} />
+        {ogImageUrl.startsWith('https://') ? (
+          <meta property="og:image:secure_url" content={ogImageUrl} />
+        ) : null}
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="512" />
+        <meta property="og:image:height" content="512" />
+        <meta property="og:image:alt" content="શ્રી અમદાવાદ ડબગર સમાજ પ્રતીક" />
         <meta property="og:locale" content="gu_IN" />
 
         {/* Twitter / X Sharing Cards */}
-        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
-        <meta name="twitter:image" content="/icon.png" />
+        <meta name="twitter:image" content={ogImageUrl} />
         <meta name="twitter:image:alt" content="અમદાવાદ ડબગર સમાજ" />
 
         {/* PWA & iOS Home Screen App Installation */}
