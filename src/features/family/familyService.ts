@@ -140,7 +140,19 @@ export const familyService = {
           }
         }
 
-        // NOTE: NO RANDOM FALLBACK! If user has no active family, do NOT assign someone else's family!
+        // C. If not found in Supabase, check if this device has unsynced local family data for this user
+        if (!familyData) {
+          await restoreAppStore(userId);
+          if (
+            localAppStore.currentFamily &&
+            (localAppStore.ownerUserId === userId || localAppStore.currentFamily.head_user_id === userId)
+          ) {
+            const syncRes = await familyService.pushLocalDataToSupabase(userId);
+            if (syncRes.success && syncRes.family) {
+              familyData = syncRes.family;
+            }
+          }
+        }
 
         if (familyData && !familyError) {
           // Fetch live members from Supabase
@@ -312,32 +324,40 @@ export const familyService = {
   /**
    * Push all locally stored mobile data into Supabase Cloud DB
    */
-  async pushLocalDataToSupabase(): Promise<{ success: boolean; error?: string; count?: number }> {
+  async pushLocalDataToSupabase(passedUserId?: string): Promise<{ success: boolean; error?: string; count?: number; family?: Family }> {
     if (!isSupabaseConfigured) {
       return { success: false, error: 'Supabase is not configured' };
     }
 
-    await restoreAppStore();
+    let userId = passedUserId || null;
+    if (!userId) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id || null;
+      } catch {}
+    }
+
+    if (!userId) {
+      return { success: false, error: 'User is not logged in. Please sign in to sync.' };
+    }
+
+    await restoreAppStore(userId);
     if (!localAppStore.currentFamily || localAppStore.members.length === 0) {
       return { success: true, count: 0 };
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'User is not logged in. Please sign in to sync.' };
-      }
-
       const localFam = localAppStore.currentFamily;
 
       // 1. Check if family already exists in Supabase
       const { data: existingFam } = await supabase
         .from('families')
         .select('*')
-        .eq('head_user_id', user.id)
+        .eq('head_user_id', userId)
         .eq('status', 'ACTIVE')
         .maybeSingle();
 
+      let dbFamily = existingFam;
       let dbFamilyId = existingFam?.id;
 
       if (!dbFamilyId) {
@@ -345,7 +365,7 @@ export const familyService = {
         const { data: insertedFam, error: famErr } = await supabase
           .from('families')
           .insert({
-            head_user_id: user.id,
+            head_user_id: userId,
             address: localFam.address || 'Address',
             city: localFam.city || 'Ahmedabad',
             state: localFam.state || 'Gujarat',
@@ -356,21 +376,38 @@ export const familyService = {
           .single();
 
         if (famErr) throw famErr;
+        dbFamily = insertedFam;
         dbFamilyId = insertedFam.id;
       }
 
-      // 2. Sync Members
+      // 2. Fetch existing members from Supabase to prevent duplicate inserts
+      const { data: existingDbMembers } = await supabase
+        .from('family_members')
+        .select('*')
+        .eq('family_id', dbFamilyId);
+
       const memberIdMap: Record<string, string> = {};
+      const syncedMembers: FamilyMember[] = [];
 
       for (const m of localAppStore.members) {
-        const { data: insertedMember, error: memErr } = await supabase
-          .from('family_members')
-          .insert({
+        const alreadyInDb = existingDbMembers?.find(
+          (dbM: any) => dbM.name.trim().toLowerCase() === m.name.trim().toLowerCase() && dbM.dob === formatDateForDB(m.dob)
+        );
+
+        if (alreadyInDb) {
+          memberIdMap[m.id] = alreadyInDb.id;
+          syncedMembers.push({
+            ...alreadyInDb,
+            age: calculateAge(alreadyInDb.dob),
+            display_relation: getRelationshipDisplay(alreadyInDb.relation),
+          });
+        } else {
+          const insertPayload: any = {
             family_id: dbFamilyId,
-            name: m.name,
+            name: m.name.trim(),
             gender: m.gender,
             mobile: m.mobile || null,
-            dob: m.dob,
+            dob: formatDateForDB(m.dob),
             photo_url: m.photo_url || null,
             relation: m.relation,
             residence_type: m.residence_type || 'SAME_AS_FAMILY',
@@ -379,14 +416,33 @@ export const familyService = {
             separate_pincode: m.separate_pincode || null,
             education_status: m.education_status || null,
             occupation_type: m.occupation_type || null,
+            blood_group: m.blood_group || null,
+            birth_place: m.birth_place || null,
             occupation_details: m.occupation_details || {},
             status: 'ACTIVE',
-          })
-          .select()
-          .single();
+          };
 
-        if (!memErr && insertedMember) {
-          memberIdMap[m.id] = insertedMember.id;
+          let { data: insertedMember, error: memErr } = await supabase
+            .from('family_members')
+            .insert(insertPayload)
+            .select()
+            .single();
+
+          if (memErr && (memErr.message?.includes('blood_group') || memErr.message?.includes('birth_place') || memErr.code === 'PGRST204')) {
+            delete insertPayload.blood_group;
+            delete insertPayload.birth_place;
+            const retryRes = await supabase.from('family_members').insert(insertPayload).select().single();
+            insertedMember = retryRes.data;
+          }
+
+          if (insertedMember) {
+            memberIdMap[m.id] = insertedMember.id;
+            syncedMembers.push({
+              ...insertedMember,
+              age: calculateAge(insertedMember.dob),
+              display_relation: getRelationshipDisplay(insertedMember.relation),
+            });
+          }
         }
       }
 
@@ -395,16 +451,29 @@ export const familyService = {
         const fromDbId = memberIdMap[rel.from_member_id];
         const toDbId = memberIdMap[rel.to_member_id];
         if (fromDbId && toDbId) {
-          await supabase.from('family_relationships').insert({
-            family_id: dbFamilyId,
-            from_member_id: fromDbId,
-            to_member_id: toDbId,
-            relationship_type: rel.relationship_type,
-          });
+          try {
+            await supabase.from('family_relationships').insert({
+              family_id: dbFamilyId,
+              from_member_id: fromDbId,
+              to_member_id: toDbId,
+              relationship_type: rel.relationship_type,
+            });
+          } catch {}
         }
       }
 
-      return { success: true, count: Object.keys(memberIdMap).length };
+      // 4. Update local store with real DB objects and UUIDs
+      const completeFamily: Family = {
+        ...dbFamily,
+        members_count: syncedMembers.length,
+      };
+
+      localAppStore.ownerUserId = userId;
+      localAppStore.currentFamily = completeFamily;
+      localAppStore.members = syncedMembers;
+      await persistAppStore(userId);
+
+      return { success: true, count: syncedMembers.length, family: completeFamily };
     } catch (err: any) {
       console.warn('Sync to Supabase error:', err);
       return { success: false, error: err?.message || 'Sync failed' };
@@ -483,12 +552,11 @@ export const familyService = {
       display_relation: 'Family Head / પરિવાર વડા',
     };
 
-    localAppStore.ownerUserId = effectiveUserId;
-    localAppStore.currentFamily = localFam;
-    localAppStore.members = [headMember];
-    await persistAppStore(effectiveUserId);
-
     if (!isSupabaseConfigured) {
+      localAppStore.ownerUserId = effectiveUserId;
+      localAppStore.currentFamily = localFam;
+      localAppStore.members = [headMember];
+      await persistAppStore(effectiveUserId);
       return { family: localFam };
     }
 

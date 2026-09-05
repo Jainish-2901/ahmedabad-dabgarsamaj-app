@@ -134,37 +134,36 @@ export const membersService = {
       display_relation: getRelationshipDisplay(input.relation),
     };
 
-    localAppStore.members.push(newMember);
-
-    if (input.education_level && input.course_or_standard) {
-      localAppStore.educations.push({
-        id: 'edu-' + Date.now(),
-        family_member_id: newMemberId,
-        education_level: input.education_level,
-        course_or_standard: input.course_or_standard,
-        education_status: input.education_status || 'Studying',
-        passing_year: input.passing_year || null,
-        current_year: input.current_year || null,
-        institution: input.institution?.trim() || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-    }
-
-    if (input.occupation_type) {
-      localAppStore.occupations.push({
-        id: 'occ-' + Date.now(),
-        family_member_id: newMemberId,
-        occupation_type: input.occupation_type,
-        details: occDetails,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-    }
-
-    await persistAppStore();
-
     if (!isSupabaseConfigured) {
+      localAppStore.members.push(newMember);
+
+      if (input.education_level && input.course_or_standard) {
+        localAppStore.educations.push({
+          id: 'edu-' + Date.now(),
+          family_member_id: newMemberId,
+          education_level: input.education_level,
+          course_or_standard: input.course_or_standard,
+          education_status: input.education_status || 'Studying',
+          passing_year: input.passing_year || null,
+          current_year: input.current_year || null,
+          institution: input.institution?.trim() || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      if (input.occupation_type) {
+        localAppStore.occupations.push({
+          id: 'occ-' + Date.now(),
+          family_member_id: newMemberId,
+          occupation_type: input.occupation_type,
+          details: occDetails,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      await persistAppStore();
       return { member: newMember };
     }
 
@@ -272,15 +271,29 @@ export const membersService = {
         }
       }
 
+      const memberObj: FamilyMember = {
+        ...memberData,
+        blood_group: memberData.blood_group || (memberData.occupation_details as any)?.blood_group || null,
+        birth_place: memberData.birth_place || (memberData.occupation_details as any)?.birth_place || null,
+        dob: formatDate(memberData.dob),
+        age: calculateAge(memberData.dob),
+        display_relation: getRelationshipDisplay(memberData.relation),
+      };
+
+      // Update local store with real Supabase member object
+      const existingIdx = localAppStore.members.findIndex((m) => m.id === memberObj.id);
+      if (existingIdx !== -1) {
+        localAppStore.members[existingIdx] = memberObj;
+      } else {
+        localAppStore.members.push(memberObj);
+      }
+      if (localAppStore.currentFamily) {
+        localAppStore.currentFamily.members_count = localAppStore.members.length;
+      }
+      await persistAppStore(localAppStore.ownerUserId || undefined);
+
       return {
-        member: {
-          ...memberData,
-          blood_group: memberData.blood_group || (memberData.occupation_details as any)?.blood_group || null,
-          birth_place: memberData.birth_place || (memberData.occupation_details as any)?.birth_place || null,
-          dob: formatDate(memberData.dob),
-          age: calculateAge(memberData.dob),
-          display_relation: getRelationshipDisplay(memberData.relation),
-        },
+        member: memberObj,
       };
     } catch (err: any) {
       console.error('addMember error:', err);
