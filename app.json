@@ -15,10 +15,12 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.dabgar.samajpustika",
+      "buildNumber": "2",
       "icon": "./assets/images/icon.png"
     },
     "android": {
       "package": "com.dabgar.samajpustika",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
