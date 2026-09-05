@@ -1,13 +1,13 @@
 {
   "expo": {
     "name": "Dabgar Samaj",
-    "slug": "community-family",
+    "slug": "dabgar-samaj-app",
     "version": "1.0.4",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/f1954d07-e261-4ce2-8c81-ee985728a215"
+      "url": "https://u.expo.dev/86883140-f9d4-43c1-bbb9-a3dde1e14781"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -52,9 +52,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f1954d07-e261-4ce2-8c81-ee985728a215"
+        "projectId": "86883140-f9d4-43c1-bbb9-a3dde1e14781"
       }
     },
-    "owner": "jainishdabgar2901"
+    "owner": "ahmedabaddabgarsamaj"
   }
 }
