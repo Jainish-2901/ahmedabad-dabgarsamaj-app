@@ -1,8 +1,8 @@
 # શ્રી અમદાવાદ ડબગર સમાજ ડિજિટલ પરિવાર પરિચય પુસ્તિકા 📖
 ### Ahmedabad Dabgar Samaj Digital Community & Family Directory
 
-[![React Native](https://img.shields.io/badge/React%20Native-0.76-blue.svg?style=flat-square&logo=react)](https://reactnative.dev)
-[![Expo](https://img.shields.io/badge/Expo-v52.0-black.svg?style=flat-square&logo=expo)](https://expo.dev)
+[![React Native](https://img.shields.io/badge/React%20Native-0.86-blue.svg?style=flat-square&logo=react)](https://reactnative.dev)
+[![Expo](https://img.shields.io/badge/Expo-v57.0-black.svg?style=flat-square&logo=expo)](https://expo.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E.svg?style=flat-square&logo=supabase)](https://supabase.com)
 [![PWA Ready](https://img.shields.io/badge/PWA-Installable-purple.svg?style=flat-square&logo=pwa)](https://web.dev/progressive-web-apps/)
@@ -32,14 +32,18 @@
 - પરિવારનો ક્યુઆર કોડ, હેડનું નામ, સરનામું, બ્લડ ગ્રૂપ અને સભ્યોની યાદી.
 - પ્રિન્ટ તેમજ કાર્ડ ઇમેજ એક્સપોર્ટ કરવાની સગવડ.
 
-### 4. 🔐 મજબૂત સુરક્ષા, ઓટીપી રિકવરી અને એકાઉન્ટ ડિલીશન (Security & Privacy)
-- મોબાઈલ નંબર અથવા ઈમેલ દ્વારા લોગિન.
+### 4. 👥 સભ્ય એડિટ પરવાનગી અને OTP રીસેટ (Authorized Member Edit & OTP Recovery)
+- **સભ્ય એડિટ પરવાનગી (Grant Edit Access)**: પરિવારના વડા પરિવારના કોઈપણ સભ્યને એડિટ પરવાનગી આપી શકે છે અને તે સમયે તેમનો સત્તાવાર Email ID નોંધી શકે છે.
+- **ઓથોરાઇઝ્ડ સભ્ય OTP પાસવર્ડ રીસેટ**: ભવિષ્યમાં જો એડિટ પરવાનગી ધરાવતો સભ્ય પાસવર્ડ ભૂલી જાય, તો પોતાનો મોબાઈલ કે ઈમેઈલ નાખીને સીધો **પોતાના જ ઈમેઈલ પર ૬ આંકડાનો OTP** મેળવીને પાસવર્ડ રીસેટ કરી શકે છે.
+- **સુરક્ષા પ્રોટેક્શન**: સામાન્ય સભ્યો પાસવર્ડ રીસેટ કરી શકતા નથી, માત્ર વડા અથવા અધિકૃત સભ્યો જ કરી શકે છે.
+
+### 5. 🔐 મજબૂત સુરક્ષા & કાયમી લૉગિન (Permanent Session Persistence like WhatsApp / Instagram)
+- **WhatsApp/Instagram જેવું કાયમી લૉગિન**: `FileSystem` આધારિત પર્સિસ્ટન્ટ ફાઈલ સ્ટોરેજ (`appStorage.ts`) વડે એપ બેકગ્રાઉન્ડમાંથી સ્વાઈપ કરો કે ફોન રીસ્ટાર્ટ કરો—લૉગિન ક્યારેય જતું નથી. માત્ર જાતે "Logout" દબાવવાથી જ લૉગઆઉટ થાય છે.
 - **6-Digit Email OTP Password Reset**: ઇમેઇલ પર ૬-અંકનો સત્તાવાર OTP મેળવીને પાસવર્ડ રીસેટ કરવાની સુરક્ષિત પદ્ધતિ.
 - **Live Password Strength Indicator**: મજબૂત પાસવર્ડ બનાવવા માટે ૪ નિયમો સાથેનું લાઈવ ઈન્ડિકેટર.
 - **⚠️ Danger Zone (Delete Family & Account)**: Google Play Store & Apple App Store ની ગાઇડલાઇન મુજબ ફેમિલી હેડ માટે ડબલ કન્ફર્મેશન (`DELETE`) સાથે કાયમી એકાઉન્ટ અને ડેટા ડિલીટ કરવાનો વિકલ્પ.
-- **Persistent Secure Session**: એન્ડ્રોઇડ પર એપ બંધ કર્યા પછી વારંવાર લોગઆઉટ ન થવા માટે ચંક્ડ સિક્યોર સ્ટોરેજ.
 
-### 5. 📱 ક્રોસ-પ્લેટફોર્મ, ડાઉનલોડ પેજ & PWA સપોર્ટ (Cross-Platform & PWA)
+### 6. 📱 ક્રોસ-પ્લેટફોર્મ, ડાઉનલોડ પેજ & PWA સપોર્ટ (Cross-Platform & PWA)
 - **Direct App Download Route (`/download`)**:
   - **Android**: સીધી `Ahmedabad-Dabgar-Samaj.apk` ડાઉનલોડ કરવાની સુવિધા.
   - **iOS (iPhone/iPad)**: Safari માંથી ૧ ક્લિકમાં "Add to Home Screen" કરવા માટેનું ઇન્ટરેક્ટિવ વિઝ્યુઅલ ગાઇડ મોડલ.
@@ -143,9 +147,9 @@ npx eas build -p android --profile production
 │   │   └── ui/              # કન્ફેટી કેનન, બટન, ઇનપુટ, પાસવર્ડ મીટર, સ્કેલેટન
 │   ├── constants/           # થીમ, સંબંધો, શિક્ષણ અને વ્યવસાય લિસ્ટ
 │   ├── features/            # Auth, Directory, Family, Members, Tree Services
-│   ├── lib/                 # Supabase ક્લાયન્ટ (Chunked Storage) અને યુટિલિટીઝ (PDF, Date)
+│   ├── lib/                 # Supabase ક્લાયન્ટ, AppStorage (FileSystem કાયમી સ્ટોરેજ), PDF/Date યુટિલિટીઝ
 │   └── types/               # TypeScript ડેટાબેઝ ટાઇપ્સ
-├── supabase/                # ડેટાબેઝ સ્કીમા અને માઈગ્રેશન સ્ક્રિપ્ટ્સ (full_schema.sql)
+├── supabase/                # ડેટાબેઝ સ્કીમા અને માઈગ્રેશન સ્ક્રિપ્ટ્સ (full_schema.sql, 05_add_member_email_and_auth.sql)
 ├── app.json                 # Expo રૂપરેખાંકન
 └── eas.json                 # EAS બિલ્ડ રૂપરેખાંકન
 ```
