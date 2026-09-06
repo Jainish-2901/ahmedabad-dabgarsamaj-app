@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 export default function DownloadAppScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const appVersion = '1.0.5';
+  const appVersion = Constants.expoConfig?.version || '1.0.6';
 
   // State for PWA install prompt & status
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);

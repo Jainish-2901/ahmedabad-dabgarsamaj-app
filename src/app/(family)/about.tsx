@@ -22,7 +22,7 @@ import {
 export default function AboutScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const appVersion = '1.0.5';
+  const appVersion = Constants.expoConfig?.version || '1.0.6';
   const [imageModalVisible, setImageModalVisible] = useState(false);
 
   const handleCall = (phoneNumber: string) => {
