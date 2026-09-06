@@ -284,9 +284,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     minWidth: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   treeCanvas: {
     alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 'auto',
+    alignSelf: 'center',
     padding: 20,
     minWidth: '100%',
     ...(Platform.OS === 'web' ? ({ transformOrigin: 'top center' } as any) : {}),

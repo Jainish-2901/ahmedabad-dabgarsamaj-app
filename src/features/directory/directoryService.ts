@@ -218,7 +218,7 @@ export const directoryService = {
             birth_place: birthPlace,
             is_deceased: isDeceased,
             deceased_date: deceasedDate,
-            age: calculateAge(m.dob),
+            age: calculateAge(m.dob, isDeceased ? deceasedDate : null),
             dob: formatDate(m.dob),
             display_relation: getRelationshipDisplay(m.relation),
             education_status: edu?.course_or_standard || m.education_status,

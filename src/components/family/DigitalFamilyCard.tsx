@@ -20,6 +20,7 @@ export interface DigitalFamilyCardProps extends ViewProps {
   onPressTree?: () => void;
   onPressDetails?: () => void;
   onPressAddMember?: () => void;
+  onPressEditAddress?: () => void;
 }
 
 export function DigitalFamilyCard({
@@ -28,6 +29,7 @@ export function DigitalFamilyCard({
   onPressTree,
   onPressDetails,
   onPressAddMember,
+  onPressEditAddress,
   style,
   ...props
 }: DigitalFamilyCardProps) {
@@ -36,7 +38,19 @@ export function DigitalFamilyCard({
   const theme = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
 
   const headMember = members.find((m) => m.relation === 'FAMILY_HEAD') || members[0];
-  const areaName = family.area?.name || (typeof family.area_id === 'string' ? family.area_id : family.city);
+  const isUuid = (val?: string | null) =>
+    typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+  const rawArea = family.area?.name && !isUuid(family.area.name)
+    ? family.area.name
+    : (typeof family.area_id === 'string' && !isUuid(family.area_id) ? family.area_id : undefined);
+  const showArea = rawArea && rawArea.trim().toLowerCase() !== (family.city || '').trim().toLowerCase();
+  const areaName = showArea ? rawArea : '';
+  const locationParts = [
+    showArea ? rawArea.trim() : null,
+    family.city?.trim(),
+    family.state?.trim(),
+  ].filter(Boolean).join(', ');
+  const locationLine = [locationParts, family.pincode?.trim()].filter(Boolean).join(' - ');
 
   const maleCount = members.filter((m) => m.gender === 'Male').length;
   const femaleCount = members.filter((m) => m.gender === 'Female').length;
@@ -95,17 +109,28 @@ export function DigitalFamilyCard({
         </View>
 
         {/* Address Row */}
-        <View style={[styles.addressBox, { backgroundColor: theme.backgroundElement }]}>
+        <TouchableOpacity
+          activeOpacity={onPressEditAddress ? 0.7 : 1}
+          onPress={onPressEditAddress}
+          disabled={!onPressEditAddress}
+          style={[styles.addressBox, { backgroundColor: theme.backgroundElement }]}
+        >
           <Ionicons name="location-outline" size={18} color={theme.primary} style={{ marginTop: 2 }} />
           <View style={{ flex: 1, marginLeft: 8 }}>
             <Text style={[styles.addressText, { color: theme.text }]}>
               {family.address}
             </Text>
             <Text style={[styles.areaCityText, { color: theme.textSecondary }]}>
-              {areaName ? `${areaName}, ` : ''}{family.city}, {family.state} - {family.pincode}
+              {locationLine}
             </Text>
           </View>
-        </View>
+          {onPressEditAddress ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.card, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: theme.border, marginLeft: 6 }}>
+              <Ionicons name="pencil" size={12} color={theme.primary} style={{ marginRight: 4 }} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primary }}>Edit / બદલો</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
 
         {/* Demographic Statistics Pills */}
         <View style={styles.statsRow}>

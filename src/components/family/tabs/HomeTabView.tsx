@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/constants/theme';
 import { Family, FamilyMember } from '@/types/database';
 import { DigitalFamilyCard } from '@/components/family/DigitalFamilyCard';
+import { EditFamilyAddressModal } from '@/components/family/EditFamilyAddressModal';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { formatAgeShort } from '@/lib/utils/date';
@@ -59,6 +60,7 @@ export function HomeTabView({
   }
 
   const headMember = members.find((m) => m.relation === 'FAMILY_HEAD') || members[0];
+  const [addressModalVisible, setAddressModalVisible] = useState(false);
 
   return (
     <ScrollView
@@ -85,6 +87,7 @@ export function HomeTabView({
         onPressDetails={() => onNavigateTab('card')}
         onPressTree={() => onNavigateTab('tree')}
         onPressAddMember={() => router.push('/(family)/add-member' as any)}
+        onPressEditAddress={() => setAddressModalVisible(true)}
       />
 
       {/* Quick Action Grid */}
@@ -95,10 +98,10 @@ export function HomeTabView({
           style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
         >
           <View style={[styles.actionIconCircle, { backgroundColor: '#EFF6FF' }]}>
-            <Ionicons name="person-add" size={22} color={theme.primary} />
+            <Ionicons name="person-add" size={20} color={theme.primary} />
           </View>
-          <Text style={[styles.actionTitle, { color: theme.text }]}>+ Add Member</Text>
-          <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>સભ્ય ઉમેરો</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.actionTitle, { color: theme.text }]}>Add Member</Text>
+          <Text numberOfLines={1} style={[styles.actionSubtitle, { color: theme.textSecondary }]}>સભ્ય ઉમેરો</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -107,12 +110,34 @@ export function HomeTabView({
           style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
         >
           <View style={[styles.actionIconCircle, { backgroundColor: '#F0FDF4' }]}>
-            <Ionicons name="git-network" size={22} color="#16A34A" />
+            <Ionicons name="git-network" size={20} color="#16A34A" />
           </View>
-          <Text style={[styles.actionTitle, { color: theme.text }]}>Family Tree</Text>
-          <Text style={[styles.actionSubtitle, { color: theme.textSecondary }]}>ફેમિલી ટ્રી</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.actionTitle, { color: theme.text }]}>Family Tree</Text>
+          <Text numberOfLines={1} style={[styles.actionSubtitle, { color: theme.textSecondary }]}>ફેમિલી ટ્રી</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setAddressModalVisible(true)}
+          style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+        >
+          <View style={[styles.actionIconCircle, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="home" size={20} color="#D97706" />
+          </View>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.actionTitle, { color: theme.text }]}>Edit Address</Text>
+          <Text numberOfLines={1} style={[styles.actionSubtitle, { color: theme.textSecondary }]}>સરનામું બદલો</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Edit Family Address Modal */}
+      <EditFamilyAddressModal
+        visible={addressModalVisible}
+        family={family}
+        onClose={() => setAddressModalVisible(false)}
+        onSuccess={() => {
+          if (onRefresh) onRefresh();
+        }}
+      />
 
       {/* Recent Directory Strip */}
       <View style={styles.sectionHeader}>
@@ -223,31 +248,35 @@ const styles = StyleSheet.create({
   },
   actionGrid: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginVertical: 12,
   },
   actionCard: {
     flex: 1,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   actionIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   actionTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
+    textAlign: 'center',
   },
   actionSubtitle: {
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 2,
+    textAlign: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',

@@ -120,12 +120,12 @@ export default function FamilyMasterScreen() {
           />
         )}
 
-        {activeTab === 'booklet' && (
-          <BookletTabView />
-        )}
-
         {activeTab === 'members' && (
           <MembersTabView members={members} />
+        )}
+
+        {activeTab === 'booklet' && (
+          <BookletTabView />
         )}
 
         {activeTab === 'tree' && (

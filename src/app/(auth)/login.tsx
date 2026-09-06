@@ -96,7 +96,7 @@ export default function LoginScreen() {
 
           <Input
             label="Email or Mobile Number / ઈમેઈલ અથવા મોબાઈલ નંબર"
-            placeholder="e.g. 9824970902 or user@example.com"
+            placeholder="e.g. 9876543210 or example@gmail.com"
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"

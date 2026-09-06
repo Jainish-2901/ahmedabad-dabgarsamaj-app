@@ -1,9 +1,24 @@
 /**
+ * Helper to identify placeholder / dummy DOBs (e.g. 1900-01-01 used for DB constraints when DOB is unknown)
+ */
+export function isDummyDOB(dobString?: string | null): boolean {
+  if (!dobString || typeof dobString !== 'string') return true;
+  const trimmed = dobString.trim();
+  return (
+    trimmed === '' ||
+    trimmed === '1900-01-01' ||
+    trimmed === '01-01-1900' ||
+    trimmed.startsWith('1900-01-01')
+  );
+}
+
+/**
  * Parse any date format (DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, ISO) into a valid Date object.
  */
 export function parseDOB(dobString?: string | null): Date | null {
   if (!dobString || typeof dobString !== 'string') return null;
   const trimmed = dobString.trim();
+  if (isDummyDOB(trimmed)) return null;
 
   // Match DD-MM-YYYY or DD/MM/YYYY
   const ddmmyyyyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
@@ -15,6 +30,13 @@ export function parseDOB(dobString?: string | null): Date | null {
     if (!isNaN(d.getTime()) && d.getDate() === day && d.getMonth() === month && d.getFullYear() === year) {
       return d;
     }
+  }
+
+  // Match 4-digit year e.g. "1990" or "2021"
+  const yyyyMatch = trimmed.match(/^(\d{4})$/);
+  if (yyyyMatch) {
+    const year = parseInt(yyyyMatch[1], 10);
+    return new Date(year, 0, 1);
   }
 
   // Fallback to standard Date parser (YYYY-MM-DD or ISO)
@@ -29,16 +51,17 @@ export function parseDOB(dobString?: string | null): Date | null {
 /**
  * Calculate age dynamically from a Date of Birth (DOB) string.
  * Supports DD-MM-YYYY, DD/MM/YYYY, and YYYY-MM-DD formats.
+ * If deceasedDateString is provided, calculates the age at demise (difference between DOB and demise date).
  */
-export function calculateAge(dobString?: string | null): number | undefined {
+export function calculateAge(dobString?: string | null, deceasedDateString?: string | null): number | undefined {
   const birthDate = parseDOB(dobString);
   if (!birthDate) return undefined;
 
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const endDate = (deceasedDateString ? parseDOB(deceasedDateString) : null) || new Date();
+  let age = endDate.getFullYear() - birthDate.getFullYear();
+  const monthDiff = endDate.getMonth() - birthDate.getMonth();
 
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+  if (monthDiff < 0 || (monthDiff === 0 && endDate.getDate() < birthDate.getDate())) {
     age--;
   }
 
@@ -49,15 +72,16 @@ export function calculateAge(dobString?: string | null): number | undefined {
  * Format human-readable age:
  * - If < 1 year: displays months (e.g. "6 Months" or "15 Days" if < 1 month)
  * - If >= 1 year: displays years (e.g. "25 Years")
+ * If deceasedDateString is provided, calculates age at demise.
  */
-export function formatAge(dobString?: string | null, fallbackAge?: number): string {
+export function formatAge(dobString?: string | null, fallbackAge?: number, deceasedDateString?: string | null): string {
   const birthDate = parseDOB(dobString);
-  const today = new Date();
+  const endDate = (deceasedDateString ? parseDOB(deceasedDateString) : null) || new Date();
 
   if (birthDate) {
-    let years = today.getFullYear() - birthDate.getFullYear();
-    let months = today.getMonth() - birthDate.getMonth();
-    let days = today.getDate() - birthDate.getDate();
+    let years = endDate.getFullYear() - birthDate.getFullYear();
+    let months = endDate.getMonth() - birthDate.getMonth();
+    let days = endDate.getDate() - birthDate.getDate();
 
     if (days < 0) {
       months--;
@@ -69,7 +93,7 @@ export function formatAge(dobString?: string | null, fallbackAge?: number): stri
 
     if (years <= 0) {
       if (months <= 0) {
-        const diffTime = Math.abs(today.getTime() - birthDate.getTime());
+        const diffTime = Math.abs(endDate.getTime() - birthDate.getTime());
         const totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         if (totalDays <= 0) return 'Newborn (નવજાત)';
         return `${totalDays} ${totalDays === 1 ? 'Day' : 'Days'} (${totalDays} દિવસ)`;
@@ -90,15 +114,16 @@ export function formatAge(dobString?: string | null, fallbackAge?: number): stri
 
 /**
  * Short age format for cards and lists (e.g. "6 months", "15 days", "25 yrs")
+ * If deceasedDateString is provided, calculates age at demise.
  */
-export function formatAgeShort(dobString?: string | null, fallbackAge?: number): string {
+export function formatAgeShort(dobString?: string | null, fallbackAge?: number, deceasedDateString?: string | null): string {
   const birthDate = parseDOB(dobString);
-  const today = new Date();
+  const endDate = (deceasedDateString ? parseDOB(deceasedDateString) : null) || new Date();
 
   if (birthDate) {
-    let years = today.getFullYear() - birthDate.getFullYear();
-    let months = today.getMonth() - birthDate.getMonth();
-    let days = today.getDate() - birthDate.getDate();
+    let years = endDate.getFullYear() - birthDate.getFullYear();
+    let months = endDate.getMonth() - birthDate.getMonth();
+    let days = endDate.getDate() - birthDate.getDate();
 
     if (days < 0) {
       months--;
@@ -110,7 +135,7 @@ export function formatAgeShort(dobString?: string | null, fallbackAge?: number):
 
     if (years <= 0) {
       if (months <= 0) {
-        const diffTime = Math.abs(today.getTime() - birthDate.getTime());
+        const diffTime = Math.abs(endDate.getTime() - birthDate.getTime());
         const totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         if (totalDays <= 0) return 'Newborn';
         return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
@@ -133,8 +158,9 @@ export function formatAgeShort(dobString?: string | null, fallbackAge?: number):
  * Format date for display in DD-MM-YYYY format
  */
 export function formatDate(dateString?: string | null): string {
+  if (!dateString || isDummyDOB(dateString)) return '';
   const d = parseDOB(dateString);
-  if (!d) return dateString || '';
+  if (!d) return '';
 
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -147,8 +173,9 @@ export function formatDate(dateString?: string | null): string {
  * Format date for PostgreSQL DATE column (YYYY-MM-DD)
  */
 export function formatDateForDB(dateString?: string | null): string {
+  if (!dateString || isDummyDOB(dateString)) return '';
   const d = parseDOB(dateString);
-  if (!d) return dateString || '';
+  if (!d) return '';
 
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');

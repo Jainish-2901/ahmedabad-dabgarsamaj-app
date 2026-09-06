@@ -298,12 +298,22 @@ export default function MemberDetailScreen() {
                   size="sm"
                 />
                 {member.is_deceased ? (
-                  <Badge
-                    label="🕊️ સ્વર્ગસ્થ (Late)"
-                    variant="neutral"
-                    size="sm"
-                    style={{ marginLeft: 6 }}
-                  />
+                  <>
+                    <Badge
+                      label="🕊️ સ્વર્ગસ્થ (Late)"
+                      variant="neutral"
+                      size="sm"
+                      style={{ marginLeft: 6 }}
+                    />
+                    {member.dob || member.age !== undefined ? (
+                      <Badge
+                        label={`ઉંમર: ${formatAgeShort(member.dob, member.age, member.deceased_date)}`}
+                        variant="neutral"
+                        size="sm"
+                        style={{ marginLeft: 6 }}
+                      />
+                    ) : null}
+                  </>
                 ) : (
                   member.dob || member.age !== undefined ? (
                     <Badge
@@ -314,7 +324,7 @@ export default function MemberDetailScreen() {
                     />
                   ) : null
                 )}
-                {member.blood_group ? (
+                {!member.is_deceased && member.blood_group ? (
                   <Badge
                     label={`🩸 ${member.blood_group}`}
                     variant="neutral"
@@ -379,7 +389,7 @@ export default function MemberDetailScreen() {
                   {member.email || (member.occupation_details as any)?.email || 'ઈમેઈલ દાખલ કરેલ નથી'}
                 </Text>
                 <Text style={{ fontSize: 11, color: '#15803D', marginTop: 4 }}>
-                  પાસવર્ડ રીસેટ કરવા માટેનો ૬ આંકડાનો OTP આ ઈમેઈલ પર મોકલવામાં આવશે.
+                  પાસવર્ડ રીસેટ કરવા માટેનો ૮ આંકડાનો OTP આ ઈમેઈલ પર મોકલવામાં આવશે.
                 </Text>
               </View>
             ) : null}
@@ -438,13 +448,14 @@ export default function MemberDetailScreen() {
           ) : null}
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-              Date of Birth:
+              {member.is_deceased ? 'જન્મ તારીખ / ઉંમર:' : 'Date of Birth / ઉંમર:'}
             </Text>
             <Text style={[styles.detailValue, { color: theme.text }]}>
-              {formatDate(member.dob)}
+              {formatDate(member.dob) || member.dob || 'N/A'}
+              {member.age !== undefined ? ` (${member.age} yrs${member.is_deceased ? ' at demise' : ''})` : ''}
             </Text>
           </View>
-          {member.blood_group ? (
+          {!member.is_deceased && member.blood_group ? (
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
                 બ્લડ ગ્રૂપ / Blood Group:
@@ -454,7 +465,7 @@ export default function MemberDetailScreen() {
               </Text>
             </View>
           ) : null}
-          {member.birth_place ? (
+          {!member.is_deceased && member.birth_place ? (
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
                 જન્મ સ્થળ / Birth Place:
@@ -464,14 +475,16 @@ export default function MemberDetailScreen() {
               </Text>
             </View>
           ) : null}
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-              Mobile Number:
-            </Text>
-            <Text style={[styles.detailValue, { color: theme.text }]}>
-              {member.mobile ? `📞 ${member.mobile}` : 'Not provided'}
-            </Text>
-          </View>
+          {!member.is_deceased ? (
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                Mobile Number:
+              </Text>
+              <Text style={[styles.detailValue, { color: theme.text }]}>
+                {member.mobile ? `📞 ${member.mobile}` : 'Not provided'}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
               Relationship:
@@ -492,140 +505,144 @@ export default function MemberDetailScreen() {
           ) : null}
         </Card>
 
-        {/* 2. Education Details */}
-        <Card style={styles.sectionCard}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Education / શિક્ષણ
-          </Text>
-          {education ? (
-            <>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                  Course / Standard:
-                </Text>
-                <Text style={[styles.detailValue, { color: theme.text, fontWeight: '700' }]}>
-                  {education.course_or_standard}
-                </Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                  Level:
-                </Text>
-                <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {education.education_level}
-                </Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                  Status:
-                </Text>
-                <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {education.education_status}
-                </Text>
-              </View>
-              {education.passing_year ? (
+        {/* 2. Education Details (Hidden for deceased members) */}
+        {!member.is_deceased && (
+          <Card style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Education / શિક્ષણ
+            </Text>
+            {education ? (
+              <>
                 <View style={styles.detailRow}>
                   <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                    Passing Year:
+                    Course / Standard:
                   </Text>
-                  <Text style={[styles.detailValue, { color: theme.text }]}>
-                    {education.passing_year}
+                  <Text style={[styles.detailValue, { color: theme.text, fontWeight: '700' }]}>
+                    {education.course_or_standard}
                   </Text>
                 </View>
-              ) : null}
-              {education.institution ? (
                 <View style={styles.detailRow}>
                   <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                    Institution:
+                    Level:
                   </Text>
                   <Text style={[styles.detailValue, { color: theme.text }]}>
-                    {education.institution}
+                    {education.education_level}
                   </Text>
                 </View>
-              ) : null}
-            </>
-          ) : (
-            <Text style={[styles.notProvidedText, { color: theme.textSecondary }]}>
-              {member.education_status ? `Status: ${member.education_status}` : 'No detailed education record added.'}
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                    Status:
+                  </Text>
+                  <Text style={[styles.detailValue, { color: theme.text }]}>
+                    {education.education_status}
+                  </Text>
+                </View>
+                {education.passing_year ? (
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                      Passing Year:
+                    </Text>
+                    <Text style={[styles.detailValue, { color: theme.text }]}>
+                      {education.passing_year}
+                    </Text>
+                  </View>
+                ) : null}
+                {education.institution ? (
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                      Institution:
+                    </Text>
+                    <Text style={[styles.detailValue, { color: theme.text }]}>
+                      {education.institution}
+                    </Text>
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <Text style={[styles.notProvidedText, { color: theme.textSecondary }]}>
+                {member.education_status ? `Status: ${member.education_status}` : 'No detailed education record added.'}
+              </Text>
+            )}
+          </Card>
+        )}
+
+        {/* 3. Occupation Details (Hidden for deceased members) */}
+        {!member.is_deceased && (
+          <Card style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Occupation / વ્યવસાય
             </Text>
-          )}
-        </Card>
-
-        {/* 3. Occupation Details */}
-        <Card style={styles.sectionCard}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Occupation / વ્યવસાય
-          </Text>
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-              Category:
-            </Text>
-            <Text style={[styles.detailValue, { color: theme.text, fontWeight: '700' }]}>
-              {getOccupationDisplay(member.occupation_type)}
-            </Text>
-          </View>
-
-          {/* Dynamic Details from Record / Dict */}
-          {occupation?.organization_name ? (
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                Organization / School:
+                Category:
               </Text>
-              <Text style={[styles.detailValue, { color: theme.text }]}>
-                {occupation.organization_name}
-              </Text>
-            </View>
-          ) : null}
-
-          {occupation?.designation ? (
-            <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                Designation / Role:
-              </Text>
-              <Text style={[styles.detailValue, { color: theme.text }]}>
-                {occupation.designation}
+              <Text style={[styles.detailValue, { color: theme.text, fontWeight: '700' }]}>
+                {getOccupationDisplay(member.occupation_type)}
               </Text>
             </View>
-          ) : null}
 
-          {occupation?.business_name ? (
-            <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                Business / Shop Name:
-              </Text>
-              <Text style={[styles.detailValue, { color: theme.text }]}>
-                {occupation.business_name}
-              </Text>
-            </View>
-          ) : null}
-
-          {occupation?.work_location ? (
-            <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                Work Location:
-              </Text>
-              <Text style={[styles.detailValue, { color: theme.text }]}>
-                {occupation.work_location}
-              </Text>
-            </View>
-          ) : null}
-
-          {/* Render extra dynamic key-values from occupation details */}
-          {Object.entries(occDetails).map(([k, v]) => {
-            if (!v || ['organization_name', 'designation', 'business_name', 'work_location'].includes(k)) return null;
-            const formattedKey = k.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-            return (
-              <View key={k} style={styles.detailRow}>
+            {/* Dynamic Details from Record / Dict */}
+            {occupation?.organization_name ? (
+              <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                  {formattedKey}:
+                  Organization / School:
                 </Text>
                 <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {String(v)}
+                  {occupation.organization_name}
                 </Text>
               </View>
-            );
-          })}
-        </Card>
+            ) : null}
+
+            {occupation?.designation ? (
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                  Designation / Role:
+                </Text>
+                <Text style={[styles.detailValue, { color: theme.text }]}>
+                  {occupation.designation}
+                </Text>
+              </View>
+            ) : null}
+
+            {occupation?.business_name ? (
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                  Business / Shop Name:
+                </Text>
+                <Text style={[styles.detailValue, { color: theme.text }]}>
+                  {occupation.business_name}
+                </Text>
+              </View>
+            ) : null}
+
+            {occupation?.work_location ? (
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                  Work Location:
+                </Text>
+                <Text style={[styles.detailValue, { color: theme.text }]}>
+                  {occupation.work_location}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Render extra dynamic key-values from occupation details */}
+            {Object.entries(occDetails).map(([k, v]) => {
+              if (!v || ['organization_name', 'designation', 'business_name', 'work_location'].includes(k)) return null;
+              const formattedKey = k.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+              return (
+                <View key={k} style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                    {formattedKey}:
+                  </Text>
+                  <Text style={[styles.detailValue, { color: theme.text }]}>
+                    {String(v)}
+                  </Text>
+                </View>
+              );
+            })}
+          </Card>
+        )}
 
         {/* 4. Residence Details */}
         <Card style={styles.sectionCard}>
@@ -637,13 +654,15 @@ export default function MemberDetailScreen() {
               Residence Type:
             </Text>
             <Text style={[styles.detailValue, { color: theme.text, fontWeight: '700' }]}>
-              {member.residence_type === 'SAME_AS_FAMILY'
+              {member.is_deceased
+                ? '🏠 Save as family (પરિવાર સાથે)'
+                : member.residence_type === 'SAME_AS_FAMILY'
                 ? '🏠 Same as Family'
                 : '🏢 Living Separately'}
             </Text>
           </View>
 
-          {member.residence_type === 'SAME_AS_FAMILY' && family ? (
+          {(member.is_deceased || member.residence_type === 'SAME_AS_FAMILY') && family ? (
             <>
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
@@ -664,25 +683,20 @@ export default function MemberDetailScreen() {
             </>
           ) : null}
 
-          {member.residence_type === 'SEPARATE' && member.separate_address ? (
-            <>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                  Address:
+          {!member.is_deceased && member.residence_type === 'SEPARATE' && member.separate_address ? (
+            <View style={{ marginTop: 8, padding: 12, borderRadius: 10, backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.border }}>
+              <Text style={[styles.detailLabel, { color: theme.textSecondary, marginBottom: 4, fontWeight: '700' }]}>
+                🏠 Separate Address / અલગ સરનામું:
+              </Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text, lineHeight: 20 }}>
+                {member.separate_address}
+              </Text>
+              {(member.separate_city || member.separate_pincode) && (
+                <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4, fontWeight: '500' }}>
+                  📍 {member.separate_city || 'Ahmedabad'}{member.separate_pincode ? ` - ${member.separate_pincode}` : ''}
                 </Text>
-                <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {member.separate_address}
-                </Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                  City / Pincode:
-                </Text>
-                <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {member.separate_city || 'Ahmedabad'} - {member.separate_pincode}
-                </Text>
-              </View>
-            </>
+              )}
+            </View>
           ) : null}
         </Card>
 

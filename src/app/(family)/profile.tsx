@@ -60,10 +60,12 @@ export default function HeadProfileScreen() {
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [mobile, setMobile] = useState('');
   const [dob, setDob] = useState('');
-  const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
+  const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
 
   const loadData = async () => {
     if (!user?.id) {
@@ -145,8 +147,36 @@ export default function HeadProfileScreen() {
 
     setSaving(false);
     setIsEditing(false);
-    Alert.alert('Success', 'Profile and family address updated successfully!');
+    Alert.alert('Success / સફળતા', 'પ્રોફાઇલ વિગતો સફળતાપૂર્વક અપડેટ થઈ છે!');
     loadData();
+  };
+
+  const handleSaveFamilyAddress = async () => {
+    if (!family) return;
+    if (!address.trim()) {
+      Alert.alert('Validation Error', 'કૃપા કરીને ઘર / ફ્લેટ / સોસાયટીનું સરનામું દાખલ કરો.');
+      return;
+    }
+    if (!pincode.trim() || pincode.trim().length !== 6) {
+      Alert.alert('Validation Error', 'કૃપા કરીને માન્ય ૬ આંકડાનો પીનકોડ દાખલ કરો.');
+      return;
+    }
+
+    setSavingAddress(true);
+    const res = await familyService.updateFamily(family.id, {
+      address: address.trim(),
+      city: city.trim() || 'Ahmedabad',
+      pincode: pincode.trim(),
+    });
+    setSavingAddress(false);
+
+    if (res.error) {
+      Alert.alert('Error', res.error);
+    } else {
+      setIsEditingAddress(false);
+      Alert.alert('Success / સફળતા', 'પરિવારનું વર્તમાન સરનામું સફળતાપૂર્વક અપડેટ થયું છે!');
+      loadData();
+    }
   };
 
   const handleDirectPasswordChange = async () => {
@@ -350,7 +380,7 @@ export default function HeadProfileScreen() {
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: theme.text }]}>Gender / જાતિ</Text>
                 <View style={styles.gridRow}>
-                  {(['Male', 'Female', 'Other'] as const).map((g) => (
+                  {(['Male', 'Female'] as const).map((g) => (
                     <TouchableOpacity
                       key={g}
                       onPress={() => setGender(g)}
@@ -363,32 +393,15 @@ export default function HeadProfileScreen() {
                       ]}
                     >
                       <Text style={[styles.choiceBtnText, { color: gender === g ? '#FFFFFF' : theme.text }]}>
-                        {g}
+                        {g === 'Male' ? '👨 Male / પુરુષ' : '👩 Female / સ્ત્રી'}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              {/* Residence Address */}
-              <Input
-                label="Residence Address / સરનામું *"
-                value={address}
-                onChangeText={setAddress}
-                multiline
-              />
-
-              <View style={styles.rowTwo}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Input label="City" value={city} onChangeText={setCity} />
-                </View>
-                <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Input label="Pincode" value={pincode} onChangeText={setPincode} keyboardType="number-pad" />
-                </View>
-              </View>
-
               <Button
-                title="Save Changes / ફેરફાર સાચવો"
+                title="Save Profile / પ્રોફાઇલ સાચવો"
                 onPress={handleSaveProfile}
                 loading={saving}
                 size="lg"
@@ -422,20 +435,76 @@ export default function HeadProfileScreen() {
                   {headMember?.dob ? `${formatDate(headMember.dob)} (${calculateAge(headMember.dob)} yrs / વર્ષ)` : 'N/A'}
                 </Text>
               </View>
+            </View>
+          )}
+        </Card>
 
-              <View style={styles.divider} />
+        {/* Dedicated Family Current Address Card */}
+        <Card style={styles.sectionCard}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Ionicons name="home" size={20} color={theme.primary} style={{ marginRight: 8 }} />
+              <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>
+                🏠 Family Address / પરિવારનું સરનામું
+              </Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setIsEditingAddress(!isEditingAddress)}
+              style={[styles.editToggleBtn, { backgroundColor: theme.primaryLight }]}
+            >
+              <Text style={[styles.editToggleText, { color: theme.primary }]}>
+                {isEditingAddress ? 'Cancel' : 'Edit / સરનામું બદલો ✏️'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Address:</Text>
-                <Text style={[styles.infoVal, styles.addressVal, { color: theme.text }]}>{family?.address || 'N/A'}</Text>
+          {isEditingAddress ? (
+            <View style={{ marginTop: 12 }}>
+              <Input
+                label="House / Flat / Society Address / ઘરનું સરનામું *"
+                placeholder="e.g. 757/1, Chhipa pole, Swaminarayan Mandir Road, Kalupur"
+                value={address}
+                onChangeText={setAddress}
+                multiline
+                numberOfLines={3}
+              />
+              <View style={styles.rowTwo}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Input label="City / શહેર" value={city} onChangeText={setCity} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Input
+                    label="Pincode / પીનકોડ *"
+                    placeholder="380001"
+                    value={pincode}
+                    onChangeText={setPincode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                  />
+                </View>
               </View>
-
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>City / Pincode:</Text>
-                <Text style={[styles.infoVal, { color: theme.text }]}>
-                  {family?.city || 'Ahmedabad'} - {family?.pincode}
+              <Button
+                title="Save Address / સરનામું સાચવો"
+                onPress={handleSaveFamilyAddress}
+                loading={savingAddress}
+                size="lg"
+                style={{ marginTop: 14 }}
+              />
+            </View>
+          ) : (
+            <View style={{ marginTop: 10 }}>
+              <View style={{ backgroundColor: theme.backgroundElement, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: theme.border }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text, lineHeight: 22 }}>
+                  {family?.address || 'સરનામું નોંધાયેલ નથી'}
+                </Text>
+                <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 6, fontWeight: '600' }}>
+                  📍 {family?.city || 'Ahmedabad'}{family?.pincode ? ` - ${family.pincode}` : ''}
                 </Text>
               </View>
+              <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 8 }}>
+                ℹ️ પરિવારના વડા અથવા એડિટ પરવાનગી ધરાવતા સભ્યો અહીંથી સરનામું ગમે ત્યારે અપડેટ કરી શકે છે.
+              </Text>
             </View>
           )}
         </Card>

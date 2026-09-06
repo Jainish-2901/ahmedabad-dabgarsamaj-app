@@ -1,6 +1,7 @@
 -- ============================================================================
 -- COMMUNITY FAMILY APPLICATION - COMPLETE DATABASE & STORAGE SCHEMA
--- Run this entire script in your new Supabase Project SQL Editor (1-Click)
+-- અમદાવાદ ડબગર સમાજ ડિજિટલ પરિચય પુસ્તિકા
+-- Run this entire script in your Supabase Project SQL Editor (1-Click Setup)
 -- ============================================================================
 
 -- 1. EXTENSIONS
@@ -9,13 +10,13 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- 2. ENUMS
 DO $$ BEGIN
-    CREATE TYPE user_role AS ENUM ('FAMILY_HEAD', 'ADMIN', 'SUPER_ADMIN', 'MODERATOR');
+    CREATE TYPE public.user_role AS ENUM ('FAMILY_HEAD', 'ADMIN', 'SUPER_ADMIN', 'MODERATOR');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE record_status AS ENUM ('ACTIVE', 'ARCHIVED');
+    CREATE TYPE public.record_status AS ENUM ('ACTIVE', 'ARCHIVED');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -26,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     auth_user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT,
     phone TEXT,
-    role user_role NOT NULL DEFAULT 'FAMILY_HEAD',
+    role public.user_role NOT NULL DEFAULT 'FAMILY_HEAD',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -51,13 +52,21 @@ CREATE TABLE IF NOT EXISTS public.families (
     city TEXT NOT NULL DEFAULT 'Ahmedabad',
     state TEXT NOT NULL DEFAULT 'Gujarat',
     pincode TEXT NOT NULL,
-    status record_status NOT NULL DEFAULT 'ACTIVE',
+    native_place TEXT DEFAULT 'Ahmedabad',
+    status public.record_status NOT NULL DEFAULT 'ACTIVE',
     notes TEXT,
     verified_at TIMESTAMPTZ,
     verified_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure native_place exists if table already existed
+ALTER TABLE IF EXISTS public.families ADD COLUMN IF NOT EXISTS native_place TEXT DEFAULT 'Ahmedabad';
+ALTER TABLE IF EXISTS public.families ADD COLUMN IF NOT EXISTS city TEXT DEFAULT 'Ahmedabad';
+ALTER TABLE IF EXISTS public.families ADD COLUMN IF NOT EXISTS state TEXT DEFAULT 'Gujarat';
+ALTER TABLE IF EXISTS public.families ADD COLUMN IF NOT EXISTS pincode TEXT;
+ALTER TABLE IF EXISTS public.families ALTER COLUMN area_id DROP NOT NULL;
 
 -- 6. FAMILY MEMBERS TABLE
 CREATE TABLE IF NOT EXISTS public.family_members (
@@ -68,7 +77,7 @@ CREATE TABLE IF NOT EXISTS public.family_members (
     gender TEXT NOT NULL,
     mobile TEXT,
     email TEXT,
-    dob DATE NOT NULL,
+    dob DATE, -- Nullable for late/deceased members
     relation TEXT NOT NULL,
     residence_type TEXT NOT NULL DEFAULT 'SAME_AS_FAMILY',
     separate_address TEXT,
@@ -81,13 +90,24 @@ CREATE TABLE IF NOT EXISTS public.family_members (
     occupation_details JSONB DEFAULT '{}'::jsonb,
     blood_group TEXT,
     birth_place TEXT,
+    is_deceased BOOLEAN DEFAULT false,
+    deceased_date TEXT,
     can_edit_family BOOLEAN NOT NULL DEFAULT false,
-    status record_status NOT NULL DEFAULT 'ACTIVE',
+    status public.record_status NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 8. FAMILY RELATIONSHIPS TABLE
+-- Ensure all latest columns & constraints exist if table already existed
+ALTER TABLE IF EXISTS public.family_members ALTER COLUMN dob DROP NOT NULL;
+ALTER TABLE IF EXISTS public.family_members ADD COLUMN IF NOT EXISTS is_deceased BOOLEAN DEFAULT false;
+ALTER TABLE IF EXISTS public.family_members ADD COLUMN IF NOT EXISTS deceased_date TEXT;
+ALTER TABLE IF EXISTS public.family_members ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE IF EXISTS public.family_members ADD COLUMN IF NOT EXISTS blood_group TEXT;
+ALTER TABLE IF EXISTS public.family_members ADD COLUMN IF NOT EXISTS birth_place TEXT;
+ALTER TABLE IF EXISTS public.family_members ADD COLUMN IF NOT EXISTS can_edit_family BOOLEAN DEFAULT false;
+
+-- 7. FAMILY RELATIONSHIPS TABLE
 CREATE TABLE IF NOT EXISTS public.family_relationships (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
@@ -99,7 +119,7 @@ CREATE TABLE IF NOT EXISTS public.family_relationships (
     CONSTRAINT uq_family_rel UNIQUE (from_member_id, to_member_id, relationship_type)
 );
 
--- 9. EDUCATION RECORDS TABLE
+-- 8. EDUCATION RECORDS TABLE
 CREATE TABLE IF NOT EXISTS public.education_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_member_id UUID NOT NULL REFERENCES public.family_members(id) ON DELETE CASCADE,
@@ -113,7 +133,7 @@ CREATE TABLE IF NOT EXISTS public.education_records (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 10. OCCUPATION RECORDS TABLE
+-- 9. OCCUPATION RECORDS TABLE
 CREATE TABLE IF NOT EXISTS public.occupation_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_member_id UUID NOT NULL REFERENCES public.family_members(id) ON DELETE CASCADE,
@@ -129,7 +149,7 @@ CREATE TABLE IF NOT EXISTS public.occupation_records (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 11. AUDIT LOGS TABLE
+-- 10. AUDIT LOGS TABLE
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     actor_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -141,7 +161,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 12. AUTH USER CREATION TRIGGER
+-- 11. AUTH USER CREATION TRIGGER
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -170,6 +190,18 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
+-- 12. HIGH-PERFORMANCE INDEXES
+CREATE INDEX IF NOT EXISTS idx_families_head_user_id ON public.families(head_user_id);
+CREATE INDEX IF NOT EXISTS idx_families_code_lower ON public.families(lower(family_code));
+CREATE INDEX IF NOT EXISTS idx_family_members_family_id ON public.family_members(family_id);
+CREATE INDEX IF NOT EXISTS idx_family_members_is_deceased ON public.family_members(is_deceased);
+CREATE INDEX IF NOT EXISTS idx_family_members_name_lower ON public.family_members(lower(name));
+CREATE INDEX IF NOT EXISTS idx_family_members_email_lower ON public.family_members(lower(email));
+CREATE INDEX IF NOT EXISTS idx_relationships_family ON public.family_relationships(family_id);
+CREATE INDEX IF NOT EXISTS idx_relationships_members ON public.family_relationships(from_member_id, to_member_id);
+CREATE INDEX IF NOT EXISTS idx_education_member ON public.education_records(family_member_id);
+CREATE INDEX IF NOT EXISTS idx_occupation_member ON public.occupation_records(family_member_id);
+
 -- 13. ROW LEVEL SECURITY (RLS) POLICIES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.families ENABLE ROW LEVEL SECURITY;
@@ -180,44 +212,74 @@ ALTER TABLE public.occupation_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
+DROP POLICY IF EXISTS "Allow read profiles" ON public.profiles;
 CREATE POLICY "Allow read profiles" ON public.profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert profile" ON public.profiles;
 CREATE POLICY "Allow insert profile" ON public.profiles FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update profile" ON public.profiles;
 CREATE POLICY "Allow update profile" ON public.profiles FOR UPDATE USING (true);
 
--- Areas Policies
-CREATE POLICY "Allow read areas" ON public.areas FOR SELECT USING (true);
-CREATE POLICY "Allow manage areas" ON public.areas FOR ALL USING (true);
-
--- Families Policies
+-- Families Policies (Public readable for QR scan verification & community directory)
+DROP POLICY IF EXISTS "Allow read families" ON public.families;
 CREATE POLICY "Allow read families" ON public.families FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert family" ON public.families;
 CREATE POLICY "Allow insert family" ON public.families FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update family" ON public.families;
 CREATE POLICY "Allow update family" ON public.families FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Allow delete family" ON public.families;
 CREATE POLICY "Allow delete family" ON public.families FOR DELETE USING (true);
 
--- Family Members Policies
+-- Family Members Policies (Public readable for QR scan verification & community directory)
+DROP POLICY IF EXISTS "Allow read members" ON public.family_members;
 CREATE POLICY "Allow read members" ON public.family_members FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert members" ON public.family_members;
 CREATE POLICY "Allow insert members" ON public.family_members FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update members" ON public.family_members;
 CREATE POLICY "Allow update members" ON public.family_members FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Allow delete members" ON public.family_members;
 CREATE POLICY "Allow delete members" ON public.family_members FOR DELETE USING (true);
 
 -- Relationships Policies
+DROP POLICY IF EXISTS "Allow read relationships" ON public.family_relationships;
 CREATE POLICY "Allow read relationships" ON public.family_relationships FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert relationships" ON public.family_relationships;
 CREATE POLICY "Allow insert relationships" ON public.family_relationships FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow delete relationships" ON public.family_relationships;
 CREATE POLICY "Allow delete relationships" ON public.family_relationships FOR DELETE USING (true);
 
 -- Education & Occupation Policies
+DROP POLICY IF EXISTS "Allow read education" ON public.education_records;
 CREATE POLICY "Allow read education" ON public.education_records FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert education" ON public.education_records;
 CREATE POLICY "Allow insert education" ON public.education_records FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update education" ON public.education_records;
 CREATE POLICY "Allow update education" ON public.education_records FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "Allow read occupation" ON public.occupation_records;
 CREATE POLICY "Allow read occupation" ON public.occupation_records FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert occupation" ON public.occupation_records;
 CREATE POLICY "Allow insert occupation" ON public.occupation_records FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update occupation" ON public.occupation_records;
 CREATE POLICY "Allow update occupation" ON public.occupation_records FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "Allow manage audit_logs" ON public.audit_logs;
 CREATE POLICY "Allow manage audit_logs" ON public.audit_logs FOR ALL USING (true);
 
-
--- 15. STORAGE BUCKET & POLICIES FOR MEMBER PHOTOS
+-- 14. STORAGE BUCKET & POLICIES FOR MEMBER PHOTOS
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('member-photos', 'member-photos', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
@@ -243,7 +305,7 @@ CREATE POLICY "Allow photo deletes in member-photos"
 ON storage.objects FOR DELETE
 USING (bucket_id = 'member-photos');
 
--- 16. PERMANENT ACCOUNT & FAMILY DELETION RPC
+-- 15. RPC: PERMANENT ACCOUNT & FAMILY DELETION
 CREATE OR REPLACE FUNCTION public.delete_user_account()
 RETURNS void
 LANGUAGE plpgsql
@@ -296,3 +358,28 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;
 
+-- 16. RPC: SYNCHRONIZE HEAD PASSWORD FOR AUTHORIZED MEMBERS
+CREATE OR REPLACE FUNCTION public.sync_head_password(p_head_user_id UUID, p_new_password TEXT)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, extensions
+AS $$
+BEGIN
+    IF p_head_user_id IS NULL OR p_new_password IS NULL OR length(p_new_password) < 6 THEN
+        RETURN false;
+    END IF;
+
+    -- Update auth user password hash using pgcrypto blowfish crypt
+    UPDATE auth.users
+    SET encrypted_password = crypt(p_new_password, gen_salt('bf')),
+        updated_at = now()
+    WHERE id = p_head_user_id;
+
+    RETURN true;
+EXCEPTION WHEN OTHERS THEN
+    RETURN false;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.sync_head_password(UUID, TEXT) TO authenticated, anon;

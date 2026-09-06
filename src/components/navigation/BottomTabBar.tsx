@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
-export type TabId = 'home' | 'booklet' | 'members' | 'tree' | 'card';
+export type TabId = 'home' | 'members' | 'booklet' | 'tree' | 'card';
 
 interface TabItem {
   id: TabId;
@@ -26,20 +26,20 @@ const TABS: TabItem[] = [
     activeIcon: 'home',
   },
   {
-    id: 'booklet',
-    route: '/(family)/booklet',
-    label: 'Booklet',
-    gujaratiLabel: 'પુસ્તિકા',
-    icon: 'book-outline',
-    activeIcon: 'book',
-  },
-  {
     id: 'members',
     route: '/(family)/members',
     label: 'Members',
     gujaratiLabel: 'સભ્યો',
     icon: 'people-outline',
     activeIcon: 'people',
+  },
+  {
+    id: 'booklet',
+    route: '/(family)/booklet',
+    label: 'Booklet',
+    gujaratiLabel: 'પુસ્તિકા',
+    icon: 'book-outline',
+    activeIcon: 'book',
   },
   {
     id: 'tree',

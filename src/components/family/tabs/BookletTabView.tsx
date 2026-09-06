@@ -22,14 +22,26 @@ import { BookletScreenSkeleton } from '@/components/ui/Skeleton';
 import { exportCommunityDirectoryAsPdf, printCommunityDirectoryDirectly } from '@/lib/utils/exportPdf';
 import { Ionicons } from '@expo/vector-icons';
 
-export function BookletTabView() {
+export interface BookletTabViewProps {
+  initialQuery?: string;
+}
+
+export function BookletTabView({ initialQuery }: BookletTabViewProps = {}) {
   const theme = useTheme();
+
+  // Read initial query from props or fallback to browser URL search params
+  let resolvedInitial = (initialQuery || '').trim();
+  if (!resolvedInitial && typeof window !== 'undefined' && window.location?.search) {
+    const sp = new URLSearchParams(window.location.search);
+    resolvedInitial = (sp.get('q') || sp.get('code') || sp.get('family_code') || '').trim();
+  }
 
   const [families, setFamilies] = useState<CommunityFamilyBookletItem[]>([]);
   const [stats, setStats] = useState<CommunityStats | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(resolvedInitial);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoOpened, setAutoOpened] = useState(false);
 
   // Deep detail modal state
   const [selectedBookletItem, setSelectedBookletItem] = useState<CommunityFamilyBookletItem | null>(null);
@@ -73,11 +85,24 @@ export function BookletTabView() {
     setStats(statsRes);
     setLoading(false);
     setRefreshing(false);
+
+    // If query/code was provided via QR scan, automatically open that family's card modal
+    if (query && !autoOpened && famRes.data && famRes.data.length > 0) {
+      const qClean = query.trim().toUpperCase();
+      const exactMatch = famRes.data.find(
+        (f) => f.family.family_code.trim().toUpperCase() === qClean
+      ) || famRes.data[0];
+
+      if (exactMatch) {
+        setSelectedBookletItem(exactMatch);
+        setAutoOpened(true);
+      }
+    }
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(resolvedInitial);
+  }, [resolvedInitial]);
 
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);

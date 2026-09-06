@@ -327,7 +327,7 @@ export function FamilyBookletDetailModal({
                         </View>
 
                         <Text style={[styles.memberAgeText, { color: theme.textSecondary }]}>
-                          {m.gender} • {m.is_deceased ? (m.deceased_date ? `સ્વર્ગવાસ: ${formatDate(m.deceased_date) || m.deceased_date}` : 'સ્વર્ગસ્થ') : formatAgeShort(m.dob, m.age)} • DOB: {formatDate(m.dob) || 'N/A'}
+                          {m.gender} • {m.is_deceased ? (m.deceased_date ? `સ્વર્ગવાસ: ${formatDate(m.deceased_date) || m.deceased_date}${formatAgeShort(m.dob, m.age, m.deceased_date) ? ` (${formatAgeShort(m.dob, m.age, m.deceased_date)})` : ''}` : 'સ્વર્ગસ્થ') : formatAgeShort(m.dob, m.age)} • DOB: {formatDate(m.dob) || 'N/A'}
                         </Text>
 
                         {!m.is_deceased && m.mobile ? (
@@ -472,15 +472,13 @@ export function FamilyBookletDetailModal({
 
                     {/* Separate Residence Address if applicable */}
                     {m.residence_type === 'SEPARATE' && m.separate_address ? (
-                      <View style={[styles.memberDetailsSection, { borderTopColor: theme.border }]}>
-                        <View style={styles.detailRow}>
-                          <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
-                            અલગ સરનામું / Residence:
-                          </Text>
-                          <Text style={[styles.detailValue, { color: theme.text }]}>
-                            🏠 {m.separate_address}, {m.separate_city || ''} - {m.separate_pincode || ''}
-                          </Text>
-                        </View>
+                      <View style={[styles.memberDetailsSection, { borderTopColor: theme.border, paddingTop: 8 }]}>
+                        <Text style={[styles.detailLabel, { color: theme.textSecondary, marginBottom: 4 }]}>
+                          🏠 અલગ સરનામું / Separate Address:
+                        </Text>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text, lineHeight: 18 }}>
+                          {m.separate_address}{m.separate_city ? `, ${m.separate_city}` : ''}{m.separate_pincode ? ` - ${m.separate_pincode}` : ''}
+                        </Text>
                       </View>
                     ) : null}
                   </View>

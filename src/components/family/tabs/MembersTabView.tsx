@@ -3,6 +3,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -13,7 +14,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { formatAgeShort } from '@/lib/utils/date';
 import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -45,20 +45,28 @@ export function MembersTabView({ members }: MembersTabViewProps) {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Top Search and Add row */}
       <View style={styles.searchRow}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <Input
-            placeholder="🔍 Search by name, relation, education..."
+        <View style={[styles.searchBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Ionicons name="search" size={18} color={theme.textSecondary} />
+          <TextInput
+            placeholder="Search by name, relation, education..."
+            placeholderTextColor={theme.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={{ marginBottom: 0 }}
+            style={[styles.searchInput, { color: theme.text }]}
           />
+          {searchQuery.length > 0 ? (
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+          ) : null}
         </View>
+
         <TouchableOpacity
-          activeOpacity={0.7}
+          activeOpacity={0.75}
           onPress={() => router.push('/(family)/add-member' as any)}
           style={[styles.addBtn, { backgroundColor: theme.primary }]}
         >
-          <Ionicons name="person-add" size={16} color="#FFFFFF" />
+          <Ionicons name="person-add" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
           <Text style={styles.addBtnText}>+ Add</Text>
         </TouchableOpacity>
       </View>
@@ -165,20 +173,38 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 14,
+    width: '100%',
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 46,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    height: '100%',
+    paddingVertical: 0,
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    justifyContent: 'center',
+    height: 46,
+    paddingHorizontal: 16,
+    borderRadius: 12,
   },
   addBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    marginLeft: 4,
   },
   filterRow: {
     flexDirection: 'row',

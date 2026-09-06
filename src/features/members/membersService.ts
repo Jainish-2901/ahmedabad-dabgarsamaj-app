@@ -1,13 +1,13 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { EducationRecord, FamilyMember, OccupationRecord } from '@/types/database';
-import { calculateAge, formatDate, formatDateForDB } from '@/lib/utils/date';
+import { calculateAge, formatDate, formatDateForDB, isDummyDOB } from '@/lib/utils/date';
 import { getRelationshipDisplay } from '@/constants/relationships';
 
 export interface AddMemberInput {
   family_id: string;
   name: string;
-  gender: 'Male' | 'Female' | 'Other' | 'Prefer not to say';
-  dob: string; // DD-MM-YYYY or YYYY-MM-DD
+  gender: 'Male' | 'Female';
+  dob?: string; // DD-MM-YYYY or YYYY-MM-DD (Optional for deceased members)
   relation: string; // RelationshipCode
   mobile?: string;
   photo_url?: string | null;
@@ -96,12 +96,15 @@ export const membersService = {
   async addMember(input: AddMemberInput): Promise<{ member?: FamilyMember; error?: string }> {
     const newMemberId = 'mem-' + Date.now();
     const isDeceased = input.is_deceased === true;
+    const cleanDob = input.dob && !isDummyDOB(input.dob) ? input.dob.trim() : '';
+    const formattedDob = cleanDob ? formatDate(cleanDob) : '';
     const occDetails = {
       ...(input.occupation_details || {}),
       is_deceased: isDeceased,
       deceased_date: input.deceased_date || null,
       blood_group: input.blood_group || null,
       birth_place: input.birth_place || null,
+      dob_unknown: !cleanDob,
     };
 
     const newMember: FamilyMember = {
@@ -109,7 +112,7 @@ export const membersService = {
       family_id: input.family_id,
       name: input.name.trim(),
       gender: input.gender,
-      dob: formatDate(input.dob),
+      dob: formattedDob,
       relation: input.relation,
       mobile: input.mobile?.trim() || null,
       photo_url: input.photo_url || null,
@@ -129,7 +132,7 @@ export const membersService = {
       deceased_date: input.deceased_date || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      age: calculateAge(input.dob),
+      age: cleanDob ? calculateAge(cleanDob, isDeceased ? input.deceased_date : null) : undefined,
       display_relation: getRelationshipDisplay(input.relation),
     };
 
@@ -138,20 +141,21 @@ export const membersService = {
     }
 
     try {
+      const dbDob = cleanDob ? formatDateForDB(cleanDob) : null;
       const insertPayload: any = {
         family_id: input.family_id,
         name: input.name.trim(),
         gender: input.gender,
-        dob: formatDateForDB(input.dob),
+        dob: dbDob,
         relation: input.relation,
         mobile: input.mobile ? input.mobile.trim() : null,
         photo_url: input.photo_url || null,
         residence_type: input.residence_type,
-        address: input.residence_type === 'SEPARATE' ? input.separate_address || null : null,
-        area_id: input.residence_type === 'SEPARATE' ? input.separate_area_id || null : null,
-        city: input.residence_type === 'SEPARATE' ? input.separate_city || 'Ahmedabad' : null,
-        state: input.residence_type === 'SEPARATE' ? input.separate_state || 'Gujarat' : null,
-        pincode: input.residence_type === 'SEPARATE' ? input.separate_pincode || null : null,
+        separate_address: input.residence_type === 'SEPARATE' ? input.separate_address || null : null,
+        separate_area_id: input.residence_type === 'SEPARATE' ? input.separate_area_id || null : null,
+        separate_city: input.residence_type === 'SEPARATE' ? input.separate_city || 'Ahmedabad' : null,
+        separate_state: input.residence_type === 'SEPARATE' ? input.separate_state || 'Gujarat' : null,
+        separate_pincode: input.residence_type === 'SEPARATE' ? input.separate_pincode || null : null,
         education_status: input.education_status || null,
         occupation_type: input.occupation_type || null,
         blood_group: input.blood_group || null,
@@ -159,8 +163,6 @@ export const membersService = {
         email: input.email || null,
         can_edit_family: input.can_edit_family || false,
         occupation_details: occDetails,
-        is_deceased: isDeceased,
-        deceased_date: input.deceased_date || null,
         status: 'ACTIVE',
       };
 
@@ -170,13 +172,29 @@ export const membersService = {
         .select()
         .single();
 
-      // Graceful fallback if database schema does not have blood_group/birth_place columns yet
-      if (memberError && (memberError.message?.includes('blood_group') || memberError.message?.includes('birth_place') || memberError.code === 'PGRST204')) {
-        delete insertPayload.blood_group;
-        delete insertPayload.birth_place;
-        const retryRes = await supabase.from('family_members').insert(insertPayload).select().single();
-        memberData = retryRes.data;
-        memberError = retryRes.error;
+      // Fallback if table enforces NOT NULL constraint on dob (older schema)
+      if (memberError && (memberError.code === '23502' || memberError.message?.includes('violates not-null constraint')) && memberError.message?.includes('dob')) {
+        console.warn('family_members.dob has NOT NULL constraint in database, using fallback placeholder date 1900-01-01...');
+        insertPayload.dob = '1900-01-01';
+        occDetails.dob_unknown = true;
+        insertPayload.occupation_details = occDetails;
+        const retryDob = await supabase.from('family_members').insert(insertPayload).select().single();
+        memberData = retryDob.data;
+        memberError = retryDob.error;
+      }
+
+      // Graceful dynamic fallback if database schema does not have certain optional columns (e.g. blood_group, birth_place, separate_*)
+      while (memberError && (memberError.code === 'PGRST204' || memberError.message?.includes('Could not find the'))) {
+        const match = memberError.message.match(/'([^']+)' column/);
+        if (match && match[1] && insertPayload[match[1]] !== undefined) {
+          console.warn(`Column '${match[1]}' not found on family_members table, retrying insert without it...`);
+          delete insertPayload[match[1]];
+          const retryRes = await supabase.from('family_members').insert(insertPayload).select().single();
+          memberData = retryRes.data;
+          memberError = retryRes.error;
+        } else {
+          break;
+        }
       }
 
       if (memberError) {
@@ -246,12 +264,17 @@ export const membersService = {
         }
       }
 
+      const isMemberDeceased = memberData.is_deceased || (memberData.occupation_details as any)?.is_deceased || false;
+      const memberDeceasedDate = memberData.deceased_date || (memberData.occupation_details as any)?.deceased_date || null;
+
       const memberObj: FamilyMember = {
         ...memberData,
         blood_group: memberData.blood_group || (memberData.occupation_details as any)?.blood_group || null,
         birth_place: memberData.birth_place || (memberData.occupation_details as any)?.birth_place || null,
+        is_deceased: isMemberDeceased,
+        deceased_date: memberDeceasedDate,
         dob: formatDate(memberData.dob),
-        age: calculateAge(memberData.dob),
+        age: calculateAge(memberData.dob, isMemberDeceased ? memberDeceasedDate : null),
         display_relation: getRelationshipDisplay(memberData.relation),
       };
 
@@ -313,24 +336,27 @@ export const membersService = {
       const memberEmail = memberData.email || (memberData.occupation_details as any)?.email || null;
       const canEdit = memberData.can_edit_family === true || (memberData.occupation_details as any)?.can_edit_family === true || memberData.relation === 'FAMILY_HEAD';
 
-      return {
-        member: {
-          ...memberData,
-          email: memberEmail,
-          can_edit_family: canEdit,
-          blood_group: bloodGroup,
-          birth_place: birthPlace,
-          is_deceased: isDeceased,
-          deceased_date: deceasedDate,
-          age: calculateAge(memberData.dob),
-          display_relation: getRelationshipDisplay(memberData.relation),
-        },
-        education: (educationData as EducationRecord) || null,
-        occupation: (occupationData as OccupationRecord) || null,
-      };
-    } catch (err: any) {
-      return { error: err?.message || 'Failed to load member' };
-    }
+        const safeDob = isDummyDOB(memberData.dob) ? '' : formatDate(memberData.dob);
+
+        return {
+          member: {
+            ...memberData,
+            email: memberEmail,
+            can_edit_family: canEdit,
+            blood_group: bloodGroup,
+            birth_place: birthPlace,
+            is_deceased: isDeceased,
+            deceased_date: deceasedDate,
+            dob: safeDob,
+            age: safeDob ? calculateAge(safeDob, isDeceased ? deceasedDate : null) : undefined,
+            display_relation: getRelationshipDisplay(memberData.relation),
+          },
+          education: (educationData as EducationRecord) || null,
+          occupation: (occupationData as OccupationRecord) || null,
+        };
+      } catch (err: any) {
+        return { error: err?.message || 'Failed to load member' };
+      }
   },
 
   /**
@@ -356,18 +382,31 @@ export const membersService = {
       deceased_date: updates.deceased_date !== undefined ? updates.deceased_date : null,
       ...(bloodGroup !== undefined ? { blood_group: bloodGroup } : {}),
       ...(birthPlace !== undefined ? { birth_place: birthPlace } : {}),
+      dob_unknown: updates.dob !== undefined ? isDummyDOB(updates.dob) : undefined,
     };
 
     if (isSupabaseConfigured) {
       try {
-        // Strip virtual fields that do not exist as top-level columns in Supabase family_members
-        const { is_deceased: _id, deceased_date: _dd, ...cleanUpdates } = updates as any;
+        // Strip virtual fields and table-incompatible fields that do not exist as top-level columns in Supabase family_members
+        const {
+          is_deceased: _id,
+          deceased_date: _dd,
+          address: _addr,
+          city: _c,
+          state: _st,
+          pincode: _p,
+          age: _age,
+          display_relation: _dr,
+          ...cleanUpdates
+        } = updates as any;
 
-        const formattedDob = cleanUpdates.dob ? formatDateForDB(cleanUpdates.dob) : undefined;
+        const formattedDob = cleanUpdates.dob && !isDummyDOB(cleanUpdates.dob)
+          ? formatDateForDB(cleanUpdates.dob)
+          : (cleanUpdates.dob === '' ? null : undefined);
 
         const updatePayload: any = {
           ...cleanUpdates,
-          ...(formattedDob ? { dob: formattedDob } : {}),
+          ...(formattedDob !== undefined ? { dob: formattedDob } : {}),
           education_status: educationUpdates?.education_status || cleanUpdates.education_status,
           occupation_type: occupationUpdates?.occupation_type || cleanUpdates.occupation_type,
           occupation_details: occDetails,
@@ -381,6 +420,13 @@ export const membersService = {
           .from('family_members')
           .update(updatePayload)
           .eq('id', memberId);
+
+        if (updateError && (updateError.code === '23502' || updateError.message?.includes('violates not-null constraint')) && updateError.message?.includes('dob')) {
+          console.warn('family_members.dob has NOT NULL constraint in database, using fallback 1900-01-01...');
+          updatePayload.dob = '1900-01-01';
+          const retryDob = await supabase.from('family_members').update(updatePayload).eq('id', memberId);
+          updateError = retryDob.error;
+        }
 
         if (updateError && (updateError.message?.includes('blood_group') || updateError.message?.includes('birth_place') || updateError.code === 'PGRST204')) {
           delete updatePayload.blood_group;

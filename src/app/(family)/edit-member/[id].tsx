@@ -52,9 +52,18 @@ export default function EditMemberScreen() {
   const [name, setName] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
-  const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
+  const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [isDeceased, setIsDeceased] = useState<boolean>(false);
   const [deceasedDate, setDeceasedDate] = useState<string>('');
+
+  const handleSetIsDeceased = (val: boolean) => {
+    setIsDeceased(val);
+    if (val) {
+      setActiveSection('basic');
+      setResidenceType('SAME_AS_FAMILY');
+    }
+  };
+
   const [dob, setDob] = useState('');
   const [mobile, setMobile] = useState('');
   const [bloodGroup, setBloodGroup] = useState<string>('');
@@ -182,14 +191,25 @@ export default function EditMemberScreen() {
 
   const handleSave = async () => {
     if (!id) return;
-    if (!name.trim() || !dob.trim()) {
-      Alert.alert('Validation Error', 'Name and Date of Birth are mandatory.');
+    if (!name.trim()) {
+      Alert.alert('Validation Error', 'Member name is mandatory.');
       return;
     }
 
-    if (!isValidDOB(dob.trim())) {
-      Alert.alert('Validation Error', 'Please enter a valid Date of Birth in DD-MM-YYYY format (e.g. 15-08-1995).');
-      return;
+    if (!isDeceased) {
+      if (!dob.trim()) {
+        Alert.alert('Validation Error', 'Date of Birth is mandatory for living members.');
+        return;
+      }
+      if (!isValidDOB(dob.trim())) {
+        Alert.alert('Validation Error', 'Please enter a valid Date of Birth in DD-MM-YYYY format (e.g. 15-08-1995).');
+        return;
+      }
+    } else {
+      if (dob.trim() && !isValidDOB(dob.trim())) {
+        Alert.alert('Validation Error', 'Please enter a valid Date of Birth in DD-MM-YYYY format or leave it blank.');
+        return;
+      }
     }
 
     setSaving(true);
@@ -207,7 +227,7 @@ export default function EditMemberScreen() {
       finalPhotoUrl = uploadRes.url;
     }
 
-    const finalCourse = courseOrStd.includes('Other') && customCourse.trim()
+    const finalCourse = !isDeceased && courseOrStd.includes('Other') && customCourse.trim()
       ? customCourse.trim()
       : courseOrStd;
 
@@ -217,29 +237,29 @@ export default function EditMemberScreen() {
         name,
         photo_url: finalPhotoUrl,
         gender,
-        dob: formatDateForDB(dob.trim()),
+        dob: dob.trim() ? formatDateForDB(dob.trim()) : '',
         relation,
-        mobile: mobile.trim() || null,
-        blood_group: bloodGroup.trim() || null,
-        birth_place: birthPlace.trim() || null,
-        residence_type: residenceType,
-        separate_address: residenceType === 'SEPARATE' ? separateAddress.trim() || null : null,
+        mobile: isDeceased ? null : (mobile.trim() || null),
+        blood_group: isDeceased ? null : (bloodGroup.trim() || null),
+        birth_place: isDeceased ? null : (birthPlace.trim() || null),
+        residence_type: isDeceased ? 'SAME_AS_FAMILY' : residenceType,
+        separate_address: !isDeceased && residenceType === 'SEPARATE' ? separateAddress.trim() || null : null,
         separate_area_id: null,
-        separate_city: residenceType === 'SEPARATE' ? separateCity.trim() || null : null,
-        separate_pincode: residenceType === 'SEPARATE' ? separatePincode.trim() || null : null,
-        occupation_type: occupationType,
+        separate_city: !isDeceased && residenceType === 'SEPARATE' ? separateCity.trim() || null : null,
+        separate_pincode: !isDeceased && residenceType === 'SEPARATE' ? separatePincode.trim() || null : null,
+        occupation_type: isDeceased ? undefined : occupationType,
         is_deceased: isDeceased,
         deceased_date: isDeceased && deceasedDate.trim() ? deceasedDate.trim() : null,
         status: 'ACTIVE',
       },
-      {
+      isDeceased ? undefined : {
         education_level: educationLevel,
         course_or_standard: finalCourse,
         education_status: eduStatus,
         passing_year: passingYear ? parseInt(passingYear, 10) : undefined,
         institution,
       },
-      {
+      isDeceased ? undefined : {
         occupation_type: occupationType,
         details: occupationDetails,
       }
@@ -320,43 +340,55 @@ export default function EditMemberScreen() {
     >
       <TopBar title={`Edit ${name || 'Member'}`} showBack />
 
-      {/* 4-Section Nav Tab Bar */}
-      <View style={[styles.tabBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12 }}>
-          {(
-            [
-              { id: 'basic', label: '1. Basic', icon: 'person' },
-              { id: 'education', label: '2. Education', icon: 'school' },
-              { id: 'occupation', label: '3. Occupation', icon: 'briefcase' },
-              { id: 'residence', label: '4. Residence', icon: 'home' },
-            ] as const
-          ).map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              activeOpacity={0.7}
-              onPress={() => setActiveSection(tab.id)}
-              style={[
-                styles.navTab,
-                {
-                  borderBottomColor: activeSection === tab.id ? theme.primary : 'transparent',
-                },
-              ]}
-            >
-              <Text
+      {/* Nav Tab Bar - Only show tabs for living members */}
+      {!isDeceased ? (
+        <View style={[styles.tabBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <View style={styles.tabBarInner}>
+            {(
+              [
+                { id: 'basic', label: '1. Basic', icon: 'person' },
+                { id: 'education', label: '2. Education', icon: 'school' },
+                { id: 'occupation', label: '3. Occupation', icon: 'briefcase' },
+                { id: 'residence', label: '4. Residence', icon: 'home' },
+              ] as const
+            ).map((tab) => (
+              <TouchableOpacity
+                key={tab.id}
+                activeOpacity={0.7}
+                onPress={() => setActiveSection(tab.id)}
                 style={[
-                  styles.navTabText,
+                  styles.navTab,
                   {
-                    color: activeSection === tab.id ? theme.primary : theme.textSecondary,
-                    fontWeight: activeSection === tab.id ? '700' : '500',
+                    borderBottomColor: activeSection === tab.id ? theme.primary : 'transparent',
                   },
                 ]}
               >
-                {tab.label}
+                <Text
+                  style={[
+                    styles.navTabText,
+                    {
+                      color: activeSection === tab.id ? theme.primary : theme.textSecondary,
+                      fontWeight: activeSection === tab.id ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.tabBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <View style={styles.tabBarInner}>
+            <View style={[styles.navTab, { borderBottomColor: theme.primary }]}>
+              <Text style={[styles.navTabText, { color: theme.primary, fontWeight: '700' }]}>
+                🕊️ સ્વર્ગસ્થ સભ્ય વિગત (Late Member Details)
               </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            </View>
+          </View>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* 1. BASIC DETAILS SECTION */}
@@ -386,7 +418,7 @@ export default function EditMemberScreen() {
             <View style={styles.fieldGroup}>
               <Text style={[styles.fieldLabel, { color: theme.text }]}>Gender / જાતિ</Text>
               <View style={styles.gridRow}>
-                {(['Male', 'Female', 'Other'] as const).map((g) => (
+                {(['Male', 'Female'] as const).map((g) => (
                   <TouchableOpacity
                     key={g}
                     onPress={() => setGender(g)}
@@ -399,7 +431,7 @@ export default function EditMemberScreen() {
                     ]}
                   >
                     <Text style={[styles.choiceText, { color: gender === g ? '#FFFFFF' : theme.text }]}>
-                      {g}
+                      {g === 'Male' ? '👨 Male / પુરુષ' : '👩 Female / સ્ત્રી'}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -414,7 +446,7 @@ export default function EditMemberScreen() {
               <View style={styles.gridRow}>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() => setIsDeceased(false)}
+                  onPress={() => handleSetIsDeceased(false)}
                   style={[
                     styles.choiceButton,
                     {
@@ -430,7 +462,7 @@ export default function EditMemberScreen() {
 
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() => setIsDeceased(true)}
+                  onPress={() => handleSetIsDeceased(true)}
                   style={[
                     styles.choiceButton,
                     {
@@ -448,65 +480,74 @@ export default function EditMemberScreen() {
 
             {isDeceased ? (
               <Input
-                label="Date / Year of Demise / સ્વર્ગવાસ તારીખ અથવા વર્ષ"
-                placeholder="e.g. 15-08-2021 or 2021"
+                label="Date / Year of Demise / સ્વર્ગવાસ તારીખ અથવા વર્ષ (મરજિયાત / Optional)"
+                placeholder="e.g. 15-08-2021 or 2021 (ખબર ન હોય તો ખાલી રાખો)"
                 value={deceasedDate}
                 onChangeText={setDeceasedDate}
-                helperText="પૂર્વજ / સ્વર્ગસ્થ સભ્ય માટે સ્વર્ગવાસ તારીખ અથવા વર્ષ દાખલ કરો"
+                helperText="સ્વર્ગવાસ તારીખ કે વર્ષની ચોક્કસ માહિતી ન હોય તો ખાલી રાખી શકાય છે"
               />
             ) : null}
 
             <Input
-              label="Date of Birth / જન્મ તારીખ (DD-MM-YYYY) *"
-              placeholder="e.g. 15-08-1995"
+              label={
+                isDeceased
+                  ? 'Date of Birth / જન્મ તારીખ (DD-MM-YYYY) (મરજિયાત / Optional)'
+                  : 'Date of Birth / જન્મ તારીખ (DD-MM-YYYY) *'
+              }
+              placeholder={isDeceased ? 'e.g. 15-08-1950 (ખબર ન હોય તો ખાલી રાખો)' : 'e.g. 15-08-1995'}
               value={dob}
               onChangeText={setDob}
               helperText={
-                formatAge(dob) !== 'N/A'
-                  ? `Calculated Age: ${formatAge(dob)}`
-                  : 'Enter DD-MM-YYYY to dynamically compute age'
+                dob.trim() && formatAge(dob, undefined, isDeceased && deceasedDate.trim() ? deceasedDate.trim() : null) !== 'N/A'
+                  ? `${isDeceased ? 'Age at Demise (અવસાન સમયે ઉંમર)' : 'Calculated Age (ઉંમર)'}: ${formatAge(dob, undefined, isDeceased && deceasedDate.trim() ? deceasedDate.trim() : null)}`
+                  : (isDeceased ? 'સ્વર્ગસ્થ સભ્ય માટે જન્મ તારીખ મરજિયાત છે (ખાલી રાખી શકો છો)' : 'Enter DD-MM-YYYY to dynamically compute age')
               }
             />
-            <Input label="Mobile Number / મોબાઈલ નંબર" value={mobile} onChangeText={setMobile} keyboardType="phone-pad" />
 
-            {/* Blood Group Picker */}
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>Blood Group / બ્લડ ગ્રૂપ</Text>
-              <View style={styles.bloodGrid}>
-                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
-                  <TouchableOpacity
-                    key={bg}
-                    activeOpacity={0.7}
-                    onPress={() => setBloodGroup(bloodGroup === bg ? '' : bg)}
-                    style={[
-                      styles.bloodChip,
-                      {
-                        backgroundColor: bloodGroup === bg ? '#DC2626' : theme.backgroundElement,
-                        borderColor: bloodGroup === bg ? '#DC2626' : theme.border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.bloodChipText,
-                        { color: bloodGroup === bg ? '#FFFFFF' : theme.text },
-                      ]}
-                    >
-                      {bg}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+            {!isDeceased && (
+              <>
+                <Input label="Mobile Number / મોબાઈલ નંબર" value={mobile} onChangeText={setMobile} keyboardType="phone-pad" />
 
-            {/* Birth Place */}
-            <Input
-              label="Birth Place / જન્મ સ્થળ (ગામ / શહેર)"
-              placeholder="e.g. અમદાવાદ, પાટણ, વિસનગર, મહેસાણા..."
-              value={birthPlace}
-              onChangeText={setBirthPlace}
-              helperText="સભ્યનું મૂળ ગામ અથવા જન્મ સ્થળ દાખલ કરો"
-            />
+                {/* Blood Group Picker */}
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.fieldLabel, { color: theme.text }]}>Blood Group / બ્લડ ગ્રૂપ</Text>
+                  <View style={styles.bloodGrid}>
+                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                      <TouchableOpacity
+                        key={bg}
+                        activeOpacity={0.7}
+                        onPress={() => setBloodGroup(bloodGroup === bg ? '' : bg)}
+                        style={[
+                          styles.bloodChip,
+                          {
+                            backgroundColor: bloodGroup === bg ? '#DC2626' : theme.backgroundElement,
+                            borderColor: bloodGroup === bg ? '#DC2626' : theme.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.bloodChipText,
+                            { color: bloodGroup === bg ? '#FFFFFF' : theme.text },
+                          ]}
+                        >
+                          {bg}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Birth Place */}
+                <Input
+                  label="Birth Place / જન્મ સ્થળ (ગામ / શહેર)"
+                  placeholder="e.g. અમદાવાદ, પાટણ, વિસનગર, મહેસાણા..."
+                  value={birthPlace}
+                  onChangeText={setBirthPlace}
+                  helperText="સભ્યનું મૂળ ગામ અથવા જન્મ સ્થળ દાખલ કરો"
+                />
+              </>
+            )}
 
             {/* Searchable Relationship Picker */}
             <View style={styles.fieldGroup}>
@@ -590,6 +631,18 @@ export default function EditMemberScreen() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+              </View>
+            ) : null}
+
+            {/* Residence preview for late members */}
+            {isDeceased ? (
+              <View style={[styles.familyAddressPreview, { backgroundColor: theme.backgroundElement, borderColor: theme.border, borderWidth: 1, marginTop: 14 }]}>
+                <Text style={[styles.previewHeading, { color: theme.text }]}>
+                  🏠 Residence / રહેઠાણ : Save as family (પરિવાર સાથે)
+                </Text>
+                <Text style={[styles.previewText, { color: theme.textSecondary, marginTop: 4 }]}>
+                  {family?.address ? `${family.address}, ${family.city || 'Ahmedabad'}${family?.pincode ? ` - ${family.pincode}` : ''}` : 'પરિવારનું મૂળ સરનામું સ્વતઃ લાગુ થશે.'}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -820,15 +873,29 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     borderBottomWidth: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   navTab: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderBottomWidth: 2,
-    marginRight: 6,
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderBottomWidth: 2.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   navTabText: {
     fontSize: 13,
+    textAlign: 'center',
   },
   scrollContent: {
     padding: 16,

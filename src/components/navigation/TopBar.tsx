@@ -12,6 +12,8 @@ export interface TopBarProps {
   showBack?: boolean;
   onBack?: () => void;
   rightAction?: React.ReactNode;
+  hideInstallButton?: boolean;
+  hideActions?: boolean;
 }
 
 export function TopBar({
@@ -19,6 +21,8 @@ export function TopBar({
   showBack = false,
   onBack,
   rightAction,
+  hideInstallButton = false,
+  hideActions = false,
 }: TopBarProps) {
   const router = useRouter();
   const { signOut, user } = useAuth();
@@ -108,10 +112,10 @@ export function TopBar({
         )}
 
         <View style={styles.rightSection}>
-          <PWAInstallButton />
+          {!hideInstallButton && !hideActions && <PWAInstallButton />}
           {rightAction ? (
             rightAction
-          ) : (
+          ) : hideActions ? null : (
             <View style={styles.actionButtonsRow}>
               {/* Profile Icon Button */}
               <TouchableOpacity
@@ -151,10 +155,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    maxWidth: 960,
+    paddingHorizontal: Platform.OS === 'web' ? 24 : 14,
     width: '100%',
-    alignSelf: 'center',
   },
   brandHeaderSection: {
     flex: 1,

@@ -30,7 +30,7 @@ export default function SetupFamilyScreen() {
   const [name, setName] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
-  const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | 'Prefer not to say'>('Male');
+  const [gender, setGender] = useState<'Male' | 'Female'>('Male');
   const [dob, setDob] = useState(''); // YYYY-MM-DD
   const [mobile, setMobile] = useState('');
   const [address, setAddress] = useState('');
@@ -167,7 +167,7 @@ export default function SetupFamilyScreen() {
               Gender / જાતિ *
             </Text>
             <View style={styles.pillRow}>
-              {(['Male', 'Female', 'Other'] as const).map((g) => (
+              {(['Male', 'Female'] as const).map((g) => (
                 <TouchableOpacity
                   key={g}
                   activeOpacity={0.7}

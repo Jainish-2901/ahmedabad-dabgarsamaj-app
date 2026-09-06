@@ -1,13 +1,13 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Area, Family, FamilyMember } from '@/types/database';
-import { calculateAge, formatDate, formatDateForDB } from '@/lib/utils/date';
+import { calculateAge, formatDate, formatDateForDB, isDummyDOB } from '@/lib/utils/date';
 import { getRelationshipDisplay } from '@/constants/relationships';
 import { clearAppStore, resetInMemoryStore } from './familyStore';
 import { AppStorage } from '@/lib/storage/appStorage';
 
 export interface CreateFamilyInput {
   name: string;
-  gender: 'Male' | 'Female' | 'Other' | 'Prefer not to say';
+  gender: 'Male' | 'Female';
   dob: string;
   mobile: string;
   photo_url?: string | null;
@@ -179,6 +179,21 @@ export const familyService = {
         }
 
         if (familyData) {
+          if (familyData.area_id && !familyData.area) {
+            try {
+              const { data: areaRecord } = await supabase
+                .from('areas')
+                .select('id, name')
+                .eq('id', familyData.area_id)
+                .maybeSingle();
+              if (areaRecord) {
+                familyData.area = areaRecord;
+              }
+            } catch (aErr) {
+              // ignore area lookup failure
+            }
+          }
+
           // Fetch live members directly from Supabase
           const { data: membersData, error: membersError } = await supabase
             .from('family_members')
@@ -193,6 +208,7 @@ export const familyService = {
               const deceasedDate = m.deceased_date || m.occupation_details?.deceased_date || null;
               const canEdit = m.can_edit_family === true || m.occupation_details?.can_edit_family === true || m.relation === 'FAMILY_HEAD';
               const memberEmail = m.email || m.occupation_details?.email || null;
+              const isDobUnknown = isDummyDOB(m.dob) || m.occupation_details?.dob_unknown;
               return {
                 ...m,
                 email: memberEmail,
@@ -201,7 +217,8 @@ export const familyService = {
                 birth_place: m.birth_place || m.occupation_details?.birth_place || null,
                 is_deceased: isDeceased,
                 deceased_date: deceasedDate,
-                age: calculateAge(m.dob),
+                dob: isDobUnknown ? '' : formatDate(m.dob),
+                age: isDobUnknown ? undefined : calculateAge(m.dob, isDeceased ? deceasedDate : null),
                 display_relation: getRelationshipDisplay(m.relation),
               };
             });
@@ -244,6 +261,21 @@ export const familyService = {
           .maybeSingle();
 
         if (familyData && !familyError) {
+          if (familyData.area_id && !familyData.area) {
+            try {
+              const { data: areaRecord } = await supabase
+                .from('areas')
+                .select('id, name')
+                .eq('id', familyData.area_id)
+                .maybeSingle();
+              if (areaRecord) {
+                familyData.area = areaRecord;
+              }
+            } catch (aErr) {
+              // ignore
+            }
+          }
+
           const { data: membersData, error: membersError } = await supabase
             .from('family_members')
             .select('*')
@@ -257,6 +289,7 @@ export const familyService = {
               const deceasedDate = m.deceased_date || m.occupation_details?.deceased_date || null;
               const canEdit = m.can_edit_family === true || m.occupation_details?.can_edit_family === true || m.relation === 'FAMILY_HEAD';
               const memberEmail = m.email || m.occupation_details?.email || null;
+              const isDobUnknown = isDummyDOB(m.dob) || m.occupation_details?.dob_unknown;
               return {
                 ...m,
                 email: memberEmail,
@@ -265,7 +298,8 @@ export const familyService = {
                 birth_place: m.birth_place || m.occupation_details?.birth_place || null,
                 is_deceased: isDeceased,
                 deceased_date: deceasedDate,
-                age: calculateAge(m.dob),
+                dob: isDobUnknown ? '' : formatDate(m.dob),
+                age: isDobUnknown ? undefined : calculateAge(m.dob, isDeceased ? deceasedDate : null),
                 display_relation: getRelationshipDisplay(m.relation),
               };
             });
@@ -280,6 +314,35 @@ export const familyService = {
         }
       } catch (err) {
         console.warn('Supabase getFamilyById network fallback:', err);
+      }
+    }
+
+    return { family: null, members: [] };
+  },
+
+  /**
+   * Fetch any family and its members by its unique family_code (e.g. 'ADS-0001')
+   */
+  async getFamilyByCode(familyCode: string): Promise<{ family: Family | null; members: FamilyMember[]; error?: string }> {
+    if (!familyCode || !familyCode.trim()) {
+      return { family: null, members: [] };
+    }
+
+    const cleanCode = familyCode.trim();
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data: familyData, error: familyError } = await supabase
+          .from('families')
+          .select('*')
+          .ilike('family_code', cleanCode)
+          .maybeSingle();
+
+        if (familyData && !familyError) {
+          return this.getFamilyById(familyData.id);
+        }
+      } catch (err) {
+        console.warn('Supabase getFamilyByCode fetch error:', err);
       }
     }
 

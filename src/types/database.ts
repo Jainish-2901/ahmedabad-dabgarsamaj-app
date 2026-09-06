@@ -2,7 +2,7 @@ export type UserRole = 'FAMILY_HEAD' | 'ADMIN' | 'SUPER_ADMIN' | 'MODERATOR';
 
 export type RecordStatus = 'ACTIVE' | 'ARCHIVED';
 
-export type Gender = 'Male' | 'Female' | 'Other' | 'Prefer not to say';
+export type Gender = 'Male' | 'Female';
 
 export type ResidenceType = 'SAME_AS_FAMILY' | 'SEPARATE';
 
@@ -53,7 +53,7 @@ export interface FamilyMember {
   gender: Gender;
   mobile: string | null;
   email?: string | null;
-  dob: string; // YYYY-MM-DD (DOB is source of truth; age calculated dynamically)
+  dob?: string | null; // YYYY-MM-DD (DOB is source of truth; age calculated dynamically. Optional for deceased members)
   relation: string; // RelationshipCode (e.g. 'FAMILY_HEAD', 'FATHER', 'BROTHER_WIFE')
   residence_type: ResidenceType;
   separate_address?: string | null;
